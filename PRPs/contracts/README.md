@@ -97,7 +97,7 @@ This directory contains comprehensive API contracts for the CharmDojo applicatio
 
 **Generation Pipeline:**
 - Text: GPT-4 Turbo (~2-3s)
-- Voice: ElevenLabs/PlayHT (~8-10s)
+- Voice: ElevenLabs v3 (alpha) - Jessica voice / PlayHT (~8-10s)
 - Image: Google Imagen 4 Fast (~15-20s)
 - **Total:** ~25-33 seconds
 
@@ -489,7 +489,7 @@ interface PaginationResponse {
 | OpenAI GPT-4 Turbo | Chat, Reward Text | Claude Sonnet |
 | OpenAI GPT-4 Vision | Girl Descriptions | Template-based |
 | Google Imagen 4 Fast | Image Generation | Cached images |
-| ElevenLabs | Voice (Premium) | PlayHT |
+| ElevenLabs v3 (alpha) - Jessica | Voice (Premium) | PlayHT |
 | PlayHT | Voice (Free) | Text-only |
 | OpenAI Moderation | Content Safety | Pattern matching |
 

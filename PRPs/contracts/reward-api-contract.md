@@ -353,8 +353,8 @@ interface RegenerateAssetResponse {
 
 ### 2. Voice Generation
 
-**Service:** ElevenLabs (Premium) or PlayHT (Free tier)  
-**Voice Profile:** Female, seductive, American accent  
+**Service:** ElevenLabs v3 (alpha) (Premium)
+**Voice Profile:** Jessica - seductive female voice  
 **Format:** MP3, 128kbps  
 **Max Duration:** 15 seconds
 
@@ -364,7 +364,7 @@ interface RegenerateAssetResponse {
 - Style: 0.4 (moderate emotional range)
 
 **Recommended Voice IDs:**
-- ElevenLabs: `21m00Tcm4TlvDq8ikWAM` (Rachel - warm, seductive)
+- ElevenLabs v3 (alpha): `cgSgspJ2msm6clMCkdW9` (Jessica - seductive, warm)
 - PlayHT: `voice_id_here` (Similar female voice)
 
 **Processing:**

@@ -18,7 +18,7 @@ This implementation plan provides a comprehensive, step-by-step guide to buildin
 **Core Technologies:**
 - **Frontend:** Next.js 16, React 19, TypeScript 5.9.3, Tailwind CSS 4.1.16, shadcn/ui 3.4.2
 - **Backend:** Next.js API Routes, Supabase (PostgreSQL, Auth, Storage)
-- **AI Services:** OpenAI GPT-4 Turbo, GPT-4 Vision, Google Imagen 4 Fast, ElevenLabs/PlayHT
+- **AI Services:** OpenAI GPT-4 Turbo, GPT-4 Vision, Google Imagen 4 Fast, ElevenLabs v3 (alpha) - Jessica voice / PlayHT
 - **Payments:** Stripe Checkout & Subscriptions
 - **Hosting:** Vercel (Edge Network, Serverless Functions)
 
@@ -484,10 +484,11 @@ git check-ignore -v .env.local
    # Alternative: Use service account JSON
    # GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
    
-   # Voice Generation - ElevenLabs (Premium)
+   # Voice Generation - ElevenLabs v3 (alpha) (Premium)
    # Get from: https://elevenlabs.io/app/settings/api-keys
+   # Voice: Jessica (seductive female voice)
    ELEVENLABS_API_KEY=your-api-key-here
-   ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM
+   ELEVENLABS_VOICE_ID=cgSgspJ2msm6clMCkdW9
    
    # Voice Generation - PlayHT (Free Tier)
    # Get from: https://play.ht/app/api-access

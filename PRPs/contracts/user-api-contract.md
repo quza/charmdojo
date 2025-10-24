@@ -308,7 +308,7 @@ interface UsageLimitsResponse {
   features: {
     unlimitedRounds: boolean;
     prioritySupport: boolean;
-    premiumVoice: boolean;           // ElevenLabs vs PlayHT
+    premiumVoice: boolean;           // ElevenLabs v3 alpha (Jessica) vs PlayHT
     rewardRegeneration: boolean;
     advancedStats: boolean;
   };

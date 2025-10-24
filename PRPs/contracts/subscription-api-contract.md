@@ -530,7 +530,7 @@ interface WebhookResponse {
 **Billing Interval:** Monthly  
 **Features:**
 - Unlimited rounds
-- Premium voice (ElevenLabs)
+- Premium voice (ElevenLabs v3 alpha - Jessica)
 - Reward regeneration
 - Advanced stats
 - Priority support

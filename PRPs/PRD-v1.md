@@ -931,9 +931,10 @@ flowchart LR
 - Network error during playback
 
 **Technical Notes:**
-- Recommended: ElevenLabs API (realistic emotional voices)
+- Recommended: ElevenLabs v3 (alpha) API (realistic emotional voices)
+- Voice: Jessica (voice ID: cgSgspJ2msm6clMCkdW9) - seductive female voice
 - Alternative: PlayHT, Azure TTS (Neural voices)
-- Voice settings: Female, seductive, American accent
+- Voice settings: Female, seductive
 - Format: MP3, 128kbps
 - Store audio URL in round record
 - Implement fallback to text-only if generation fails
@@ -2182,7 +2183,7 @@ type AccountType = 'free' | 'premium';
 | **LLM for Chat** | AI girl responses | OpenAI GPT-4, Claude Sonnet, Gemini | **GPT-4 Turbo** - Best balance of quality, speed, cost |
 | **Vision AI** | Girl description | GPT-4 Vision, Claude 3 Vision | **GPT-4 Vision** - Most accurate descriptions |
 | **Image Generation** | Profile & reward images | Imagen 4 Fast, FLUX, Stable Diffusion XL | **Imagen 4 Fast** - Google's latest, high quality, fast generation |
-| **Voice Generation** | Reward audio | ElevenLabs, PlayHT, Azure TTS | **ElevenLabs** - Most realistic emotional voices |
+| **Voice Generation** | Reward audio | ElevenLabs v3 (alpha), PlayHT, Azure TTS | **ElevenLabs v3 (alpha) - Jessica voice** - Most realistic emotional voices |
 | **Content Moderation** | Safety filtering | OpenAI Moderation, Perspective API | **OpenAI Moderation** - Fast, accurate, free tier |
 
 **Detailed AI Service Recommendations:**
@@ -2206,14 +2207,15 @@ type AccountType = 'free' | 'premium';
 
 **Recommendation:** Use Imagen 4 Fast for optimal balance of quality, speed, and safety
 
-#### Voice Generation: ElevenLabs
+#### Voice Generation: ElevenLabs v3 (alpha)
 - **Pros:** Most realistic emotional voices, voice cloning, multiple accents
+- **Voice:** Jessica (voice ID: cgSgspJ2msm6clMCkdW9) - seductive female voice
 - **Cons:** $0.18 per 1000 characters (medium tier)
 - **Alternatives:** 
   - PlayHT ($0.06/1000 chars) - Good quality, cheaper
   - Azure Neural TTS ($15/1M chars) - Cheapest, less emotional range
   
-**Recommendation:** ElevenLabs for premium tier, PlayHT for free tier
+**Recommendation:** ElevenLabs v3 (alpha) with Jessica voice for premium tier, PlayHT for free tier
 
 ---
 
@@ -2274,7 +2276,7 @@ GOOGLE_CLOUD_API_KEY=your-api-key
 
 # Voice Generation
 ELEVENLABS_API_KEY=xxx
-ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM
+ELEVENLABS_VOICE_ID=cgSgspJ2msm6clMCkdW9
 
 # Stripe
 STRIPE_SECRET_KEY=sk_live_xxx
@@ -3183,7 +3185,7 @@ Outdoor park, Coffee shop, Urban street, Beach, Mountain hiking trail, City roof
 | **Rounds per day** | 5 | Unlimited |
 | **Girl generation** | Standard (Imagen 4 Fast) | Premium (Imagen 4 Fast) |
 | **AI responses** | GPT-4 Turbo | GPT-4 Turbo |
-| **Reward voice** | PlayHT | ElevenLabs |
+| **Reward voice** | PlayHT | ElevenLabs v3 (alpha) - Jessica |
 | **Reward images** | Standard quality | Premium quality |
 | **Conversation history** | Last 10 rounds | Unlimited |
 | **Advanced stats** | Basic | Detailed analytics |
