@@ -618,27 +618,32 @@ git check-ignore .env.local
          colors: {
            // CharmDojo Brand Colors (from PRD)
            primary: {
-             DEFAULT: '#FF7158', // Orange
-             light: '#FF8A75',
-             dark: '#E6553C',
+             DEFAULT: '#e15f6e', // Coral-Pink (Headlines)
+             light: '#ef8391',
+             dark: '#c73d4f',
            },
            secondary: {
-             DEFAULT: '#FD2B7B', // Magenta
-             light: '#FF4D94',
-             dark: '#D91C65',
+             DEFAULT: '#f53049', // Bright Red-Pink (Gradient 1)
+             light: '#ff5a70',
+             dark: '#d91c38',
+           },
+           accent: {
+             DEFAULT: '#f22a5a', // Magenta-Pink (Gradient 2)
+             light: '#ff4d79',
+             dark: '#d11545',
            },
            neutral: {
-             DEFAULT: '#424242', // Gray
-             50: '#F5F5F5',
-             100: '#E0E0E0',
-             200: '#BDBDBD',
-             300: '#9E9E9E',
-             400: '#757575',
-             500: '#424242',
-             600: '#303030',
-             700: '#212121',
-             800: '#181818',
-             900: '#0D0D0D',
+             DEFAULT: '#04060c', // Dark Background
+             50: '#f8f9fa',
+             100: '#e9ecef',
+             200: '#dee2e6',
+             300: '#adb5bd',
+             400: '#6c757d',
+             500: '#495057',
+             600: '#343a40',
+             700: '#212529',
+             800: '#0a0d12',
+             900: '#04060c',
            },
            // Semantic colors
            success: {
@@ -737,58 +742,58 @@ git check-ignore .env.local
    
    @layer base {
      :root {
-       --background: 0 0% 100%;
-       --foreground: 0 0% 3.9%;
-       --card: 0 0% 100%;
-       --card-foreground: 0 0% 3.9%;
-       --popover: 0 0% 100%;
-       --popover-foreground: 0 0% 3.9%;
-       --primary: 11 100% 67%; /* #FF7158 */
-       --primary-foreground: 0 0% 98%;
-       --secondary: 339 97% 58%; /* #FD2B7B */
-       --secondary-foreground: 0 0% 98%;
-       --muted: 0 0% 96.1%;
-       --muted-foreground: 0 0% 45.1%;
-       --accent: 0 0% 96.1%;
-       --accent-foreground: 0 0% 9%;
+       --background: 215 50% 3%; /* #04060c */
+       --foreground: 0 0% 100%; /* #ffffff */
+       --card: 215 40% 8%;
+       --card-foreground: 0 0% 100%;
+       --popover: 215 45% 6%;
+       --popover-foreground: 0 0% 100%;
+       --primary: 354 65% 63%; /* #e15f6e */
+       --primary-foreground: 0 0% 100%;
+       --secondary: 352 90% 58%; /* #f53049 */
+       --secondary-foreground: 0 0% 100%;
+       --muted: 215 35% 15%;
+       --muted-foreground: 0 0% 70%;
+       --accent: 346 87% 56%; /* #f22a5a */
+       --accent-foreground: 0 0% 100%;
        --destructive: 0 84.2% 60.2%;
-       --destructive-foreground: 0 0% 98%;
-       --border: 0 0% 89.8%;
-       --input: 0 0% 89.8%;
-       --ring: 0 0% 3.9%;
-       --chart-1: 12 76% 61%;
-       --chart-2: 173 58% 39%;
-       --chart-3: 197 37% 24%;
-       --chart-4: 43 74% 66%;
-       --chart-5: 27 87% 67%;
+       --destructive-foreground: 0 0% 100%;
+       --border: 215 30% 18%;
+       --input: 215 30% 18%;
+       --ring: 354 65% 63%;
+       --chart-1: 354 65% 63%;
+       --chart-2: 352 90% 58%;
+       --chart-3: 346 87% 56%;
+       --chart-4: 340 82% 52%;
+       --chart-5: 335 78% 48%;
        --radius: 0.5rem;
      }
    
      .dark {
-       --background: 0 0% 3.9%;
-       --foreground: 0 0% 98%;
-       --card: 0 0% 3.9%;
-       --card-foreground: 0 0% 98%;
-       --popover: 0 0% 3.9%;
-       --popover-foreground: 0 0% 98%;
-       --primary: 11 100% 67%;
-       --primary-foreground: 0 0% 98%;
-       --secondary: 339 97% 58%;
-       --secondary-foreground: 0 0% 98%;
-       --muted: 0 0% 14.9%;
-       --muted-foreground: 0 0% 63.9%;
-       --accent: 0 0% 14.9%;
-       --accent-foreground: 0 0% 98%;
+       --background: 215 50% 3%;
+       --foreground: 0 0% 100%;
+       --card: 215 40% 8%;
+       --card-foreground: 0 0% 100%;
+       --popover: 215 45% 6%;
+       --popover-foreground: 0 0% 100%;
+       --primary: 354 65% 63%;
+       --primary-foreground: 0 0% 100%;
+       --secondary: 352 90% 58%;
+       --secondary-foreground: 0 0% 100%;
+       --muted: 215 35% 15%;
+       --muted-foreground: 0 0% 70%;
+       --accent: 346 87% 56%;
+       --accent-foreground: 0 0% 100%;
        --destructive: 0 62.8% 30.6%;
-       --destructive-foreground: 0 0% 98%;
-       --border: 0 0% 14.9%;
-       --input: 0 0% 14.9%;
-       --ring: 0 0% 83.1%;
-       --chart-1: 220 70% 50%;
-       --chart-2: 160 60% 45%;
-       --chart-3: 30 80% 55%;
-       --chart-4: 280 65% 60%;
-       --chart-5: 340 75% 55%;
+       --destructive-foreground: 0 0% 100%;
+       --border: 215 30% 18%;
+       --input: 215 30% 18%;
+       --ring: 354 65% 63%;
+       --chart-1: 354 65% 63%;
+       --chart-2: 352 90% 58%;
+       --chart-3: 346 87% 56%;
+       --chart-4: 340 82% 52%;
+       --chart-5: 335 78% 48%;
      }
    }
    
@@ -826,7 +831,8 @@ npm run build
 - ⚠️ CSS variable format must be HSL values (hue saturation lightness)
 
 **Reference PRD Sections**: 
-- Landing Page & Navigation (Page 1008-1035, Brand Colors)
+- Landing Page & Navigation (Page 1008-1035)
+- Updated Brand Colors: Dark (#04060c), Coral-Pink (#e15f6e), Gradient Reds (#f53049, #f22a5a)
 
 ---
 

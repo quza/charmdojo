@@ -1015,7 +1015,7 @@ flowchart LR
 - [ ] Headline: "Elevate your texting skills"
 - [ ] Subheadline: "Become the master of pickup art on dating apps"
 - [ ] "Try for free" CTA button (prominent)
-- [ ] Color scheme: Orange (#FF7158), Magenta (#FD2B7B), Gray (#424242)
+- [ ] Color scheme: Dark Background (#04060c), Coral-Pink (#e15f6e), White (#ffffff), Gradient Reds (#f53049, #f22a5a)
 - [ ] Navbar with "Sign Up" and "Sign In" buttons
 - [ ] Responsive design (mobile, tablet, desktop)
 - [ ] Smooth scrolling and animations
@@ -1029,7 +1029,9 @@ flowchart LR
 **Technical Notes:**
 - Component: `LandingPage.tsx`
 - Use Tailwind CSS for styling
-- Hero gradient background using brand colors
+- Hero gradient background using brand colors (gradient from #f53049 to #f22a5a)
+- Dark background (#04060c) for main layout
+- Headlines in coral-pink (#e15f6e)
 - Font: Modern sans-serif (Inter or Poppins)
 - CTA button links to sign-up modal
 - Implement intersection observer for scroll animations
