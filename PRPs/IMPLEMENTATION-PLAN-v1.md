@@ -600,201 +600,109 @@ git check-ignore .env.local
 
 **Implementation Details**:
 
-1. **Update tailwind.config.ts**
+> **Note**: This project uses **Tailwind CSS v4** which has a different configuration approach than v3. Instead of using a `tailwind.config.ts` file, Tailwind v4 uses **CSS-based configuration** via the `@theme` directive and `@import "tailwindcss"`. This is the modern approach and provides better performance.
+
+1. **Verify PostCSS Configuration**
    
-   Replace/update the file: `tailwind.config.ts`
-   ```typescript
-   import type { Config } from 'tailwindcss'
-   
-   const config: Config = {
-     darkMode: ['class'],
-     content: [
-       './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
-       './src/components/**/*.{js,ts,jsx,tsx,mdx}',
-       './src/app/**/*.{js,ts,jsx,tsx,mdx}',
-     ],
-     theme: {
-       extend: {
-         colors: {
-           // CharmDojo Brand Colors (from PRD)
-           primary: {
-             DEFAULT: '#e15f6e', // Coral-Pink (Headlines)
-             light: '#ef8391',
-             dark: '#c73d4f',
-           },
-           secondary: {
-             DEFAULT: '#f53049', // Bright Red-Pink (Gradient 1)
-             light: '#ff5a70',
-             dark: '#d91c38',
-           },
-           accent: {
-             DEFAULT: '#f22a5a', // Magenta-Pink (Gradient 2)
-             light: '#ff4d79',
-             dark: '#d11545',
-           },
-           neutral: {
-             DEFAULT: '#04060c', // Dark Background
-             50: '#f8f9fa',
-             100: '#e9ecef',
-             200: '#dee2e6',
-             300: '#adb5bd',
-             400: '#6c757d',
-             500: '#495057',
-             600: '#343a40',
-             700: '#212529',
-             800: '#0a0d12',
-             900: '#04060c',
-           },
-           // Semantic colors
-           success: {
-             DEFAULT: '#10B981',
-             light: '#34D399',
-             dark: '#059669',
-           },
-           warning: {
-             DEFAULT: '#F59E0B',
-             light: '#FBBF24',
-             dark: '#D97706',
-           },
-           error: {
-             DEFAULT: '#EF4444',
-             light: '#F87171',
-             dark: '#DC2626',
-           },
-           // UI colors
-           background: 'hsl(var(--background))',
-           foreground: 'hsl(var(--foreground))',
-           card: {
-             DEFAULT: 'hsl(var(--card))',
-             foreground: 'hsl(var(--card-foreground))'
-           },
-           popover: {
-             DEFAULT: 'hsl(var(--popover))',
-             foreground: 'hsl(var(--popover-foreground))'
-           },
-           muted: {
-             DEFAULT: 'hsl(var(--muted))',
-             foreground: 'hsl(var(--muted-foreground))'
-           },
-           accent: {
-             DEFAULT: 'hsl(var(--accent))',
-             foreground: 'hsl(var(--accent-foreground))'
-           },
-           destructive: {
-             DEFAULT: 'hsl(var(--destructive))',
-             foreground: 'hsl(var(--destructive-foreground))'
-           },
-           border: 'hsl(var(--border))',
-           input: 'hsl(var(--input))',
-           ring: 'hsl(var(--ring))',
-           chart: {
-             '1': 'hsl(var(--chart-1))',
-             '2': 'hsl(var(--chart-2))',
-             '3': 'hsl(var(--chart-3))',
-             '4': 'hsl(var(--chart-4))',
-             '5': 'hsl(var(--chart-5))'
-           }
-         },
-         borderRadius: {
-           lg: 'var(--radius)',
-           md: 'calc(var(--radius) - 2px)',
-           sm: 'calc(var(--radius) - 4px)'
-         },
-         keyframes: {
-           'accordion-down': {
-             from: { height: '0' },
-             to: { height: 'var(--radix-accordion-content-height)' }
-           },
-           'accordion-up': {
-             from: { height: 'var(--radix-accordion-content-height)' },
-             to: { height: '0' }
-           },
-           'pulse-success': {
-             '0%, 100%': { opacity: '1' },
-             '50%': { opacity: '0.7', backgroundColor: '#10B981' }
-           },
-           'pulse-error': {
-             '0%, 100%': { opacity: '1' },
-             '50%': { opacity: '0.7', backgroundColor: '#EF4444' }
-           }
-         },
-         animation: {
-           'accordion-down': 'accordion-down 0.2s ease-out',
-           'accordion-up': 'accordion-up 0.2s ease-out',
-           'pulse-success': 'pulse-success 0.5s ease-in-out',
-           'pulse-error': 'pulse-error 0.5s ease-in-out'
-         }
-       },
+   Check that `postcss.config.mjs` has the correct Tailwind v4 plugin:
+   ```javascript
+   const config = {
+     plugins: {
+       "@tailwindcss/postcss": {},
      },
-     plugins: [require('tailwindcss-animate')],
-   } satisfies Config
+   };
    
-   export default config
+   export default config;
    ```
 
-2. **Update globals.css with CSS Variables**
+2. **Configure globals.css with Brand Colors**
    
    Update file: `src/app/globals.css`
    ```css
-   @tailwind base;
-   @tailwind components;
-   @tailwind utilities;
+   @import "tailwindcss";
    
-   @layer base {
-     :root {
-       --background: 215 50% 3%; /* #04060c */
-       --foreground: 0 0% 100%; /* #ffffff */
-       --card: 215 40% 8%;
-       --card-foreground: 0 0% 100%;
-       --popover: 215 45% 6%;
-       --popover-foreground: 0 0% 100%;
-       --primary: 354 65% 63%; /* #e15f6e */
-       --primary-foreground: 0 0% 100%;
-       --secondary: 352 90% 58%; /* #f53049 */
-       --secondary-foreground: 0 0% 100%;
-       --muted: 215 35% 15%;
-       --muted-foreground: 0 0% 70%;
-       --accent: 346 87% 56%; /* #f22a5a */
-       --accent-foreground: 0 0% 100%;
-       --destructive: 0 84.2% 60.2%;
-       --destructive-foreground: 0 0% 100%;
-       --border: 215 30% 18%;
-       --input: 215 30% 18%;
-       --ring: 354 65% 63%;
-       --chart-1: 354 65% 63%;
-       --chart-2: 352 90% 58%;
-       --chart-3: 346 87% 56%;
-       --chart-4: 340 82% 52%;
-       --chart-5: 335 78% 48%;
-       --radius: 0.5rem;
-     }
+   @theme {
+     /* CharmDojo Brand Colors (from PRD) */
+     --color-primary: #e15f6e;
+     --color-primary-light: #ef8391;
+     --color-primary-dark: #c73d4f;
+     
+     --color-secondary: #f53049;
+     --color-secondary-light: #ff5a70;
+     --color-secondary-dark: #d91c38;
+     
+     --color-accent: #f22a5a;
+     --color-accent-light: #ff4d79;
+     --color-accent-dark: #d11545;
+     
+     --color-neutral: #04060c;
+     --color-neutral-50: #f8f9fa;
+     --color-neutral-100: #e9ecef;
+     --color-neutral-200: #dee2e6;
+     --color-neutral-300: #adb5bd;
+     --color-neutral-400: #6c757d;
+     --color-neutral-500: #495057;
+     --color-neutral-600: #343a40;
+     --color-neutral-700: #212529;
+     --color-neutral-800: #0a0d12;
+     --color-neutral-900: #04060c;
+     
+     --color-success: #10b981;
+     --color-success-light: #34d399;
+     --color-success-dark: #059669;
+     
+     --color-warning: #f59e0b;
+     --color-warning-light: #fbbf24;
+     --color-warning-dark: #d97706;
+     
+     --color-error: #ef4444;
+     --color-error-light: #f87171;
+     --color-error-dark: #dc2626;
+     
+     /* shadcn/ui compatible colors (using CSS variables) */
+     --color-background: oklch(0.15 0.02 240); /* Dark background #04060c */
+     --color-foreground: oklch(1 0 0); /* White text */
+     --color-card: oklch(0.2 0.02 240);
+     --color-card-foreground: oklch(1 0 0);
+     --color-popover: oklch(0.18 0.02 240);
+     --color-popover-foreground: oklch(1 0 0);
+     --color-muted: oklch(0.3 0.02 240);
+     --color-muted-foreground: oklch(0.7 0 0);
+     --color-border: oklch(0.35 0.02 240);
+     --color-input: oklch(0.35 0.02 240);
+     --color-ring: oklch(0.63 0.15 354);
+     
+     /* Radius */
+     --radius: 0.5rem;
+     --radius-lg: 0.5rem;
+     --radius-md: calc(0.5rem - 2px);
+     --radius-sm: calc(0.5rem - 4px);
+     
+     /* Animations */
+     --animate-accordion-down: accordion-down 0.2s ease-out;
+     --animate-accordion-up: accordion-up 0.2s ease-out;
+     --animate-pulse-success: pulse-success 0.5s ease-in-out;
+     --animate-pulse-error: pulse-error 0.5s ease-in-out;
+   }
    
-     .dark {
-       --background: 215 50% 3%;
-       --foreground: 0 0% 100%;
-       --card: 215 40% 8%;
-       --card-foreground: 0 0% 100%;
-       --popover: 215 45% 6%;
-       --popover-foreground: 0 0% 100%;
-       --primary: 354 65% 63%;
-       --primary-foreground: 0 0% 100%;
-       --secondary: 352 90% 58%;
-       --secondary-foreground: 0 0% 100%;
-       --muted: 215 35% 15%;
-       --muted-foreground: 0 0% 70%;
-       --accent: 346 87% 56%;
-       --accent-foreground: 0 0% 100%;
-       --destructive: 0 62.8% 30.6%;
-       --destructive-foreground: 0 0% 100%;
-       --border: 215 30% 18%;
-       --input: 215 30% 18%;
-       --ring: 354 65% 63%;
-       --chart-1: 354 65% 63%;
-       --chart-2: 352 90% 58%;
-       --chart-3: 346 87% 56%;
-       --chart-4: 340 82% 52%;
-       --chart-5: 335 78% 48%;
-     }
+   @keyframes accordion-down {
+     from { height: 0; }
+     to { height: var(--radix-accordion-content-height); }
+   }
+   
+   @keyframes accordion-up {
+     from { height: var(--radix-accordion-content-height); }
+     to { height: 0; }
+   }
+   
+   @keyframes pulse-success {
+     0%, 100% { opacity: 1; }
+     50% { opacity: 0.7; background-color: #10b981; }
+   }
+   
+   @keyframes pulse-error {
+     0%, 100% { opacity: 1; }
+     50% { opacity: 0.7; background-color: #ef4444; }
    }
    
    @layer base {
@@ -802,10 +710,29 @@ git check-ignore .env.local
        @apply border-border;
      }
      body {
-       @apply bg-background text-foreground;
+       @apply bg-neutral-900 text-white;
      }
    }
    ```
+
+**Usage Examples**:
+
+After configuration, you can use the brand colors in your components:
+
+```tsx
+// Using brand colors
+<div className="bg-primary text-white">Primary Button</div>
+<div className="bg-secondary hover:bg-secondary-dark">Secondary</div>
+<div className="bg-neutral-900 text-neutral-100">Dark Background</div>
+<div className="text-success">Success message</div>
+<div className="text-error">Error message</div>
+
+// Using radius
+<div className="rounded-lg">Rounded corners</div>
+
+// Using animations
+<div className="animate-pulse-success">Pulsing success</div>
+```
 
 **API Endpoints Used**: None
 
@@ -818,20 +745,29 @@ npm run dev
 npm run build
 
 # Should complete without CSS errors
+
+# Check that Tailwind classes work by temporarily adding to page.tsx:
+# <div className="bg-primary text-white p-4">Test Primary Color</div>
 ```
 
 **Acceptance Criteria**:
-- [ ] Tailwind config includes brand colors
-- [ ] CSS variables defined in globals.css
+- [ ] PostCSS config uses @tailwindcss/postcss plugin
+- [ ] Brand colors defined in @theme directive
+- [ ] CSS variables compatible with shadcn/ui
 - [ ] Dev server shows no CSS warnings
 - [ ] Build completes successfully
+- [ ] Test classes render with correct colors
 
 **Common Pitfalls**:
-- ⚠️ Ensure tailwindcss-animate is installed before referencing in config
-- ⚠️ CSS variable format must be HSL values (hue saturation lightness)
+- ⚠️ Tailwind v4 does NOT use `tailwind.config.ts` - configuration is in CSS
+- ⚠️ Must use `@import "tailwindcss"` instead of `@tailwind` directives
+- ⚠️ Color format can be hex, rgb, oklch - oklch provides better perceptual uniformity
+- ⚠️ The `@tailwindcss/postcss` plugin must be in postcss.config.mjs
+- ⚠️ If you see "Unknown at rule @theme" warnings in VSCode, install the Tailwind CSS IntelliSense extension
 
 **Reference PRD Sections**: 
 - Landing Page & Navigation (Page 1008-1035)
+- Technology Stack (Page 2153-2254) - Tailwind CSS 4.1.16
 - Updated Brand Colors: Dark (#04060c), Coral-Pink (#e15f6e), Gradient Reds (#f53049, #f22a5a)
 
 ---
@@ -939,10 +875,21 @@ npm run dev
 
 **Implementation Details**:
 
-1. **Install Prettier and Extensions**
+> **Note**: Next.js 16 uses ESLint 9 with the new flat config format (`eslint.config.mjs`). The old `.eslintrc.json` format is no longer supported. Also, Next.js 16 does NOT have a `next lint` command - we use ESLint directly.
+
+1. **Install ESLint, Prettier and Extensions**
    ```bash
-   npm install --save-dev prettier eslint-config-prettier eslint-plugin-prettier
+   # Core ESLint packages
+   npm install --save-dev eslint@^9.38.0 eslint-config-next
+   
+   # TypeScript ESLint support
    npm install --save-dev @typescript-eslint/eslint-plugin @typescript-eslint/parser
+   
+   # Prettier and ESLint integration
+   npm install --save-dev prettier eslint-config-prettier eslint-plugin-prettier
+   
+   # Compatibility layer for flat config
+   npm install --save-dev @eslint/eslintrc
    ```
 
 2. **Create .prettierrc Configuration**
@@ -976,28 +923,44 @@ npm run dev
    pnpm-lock.yaml
    ```
 
-4. **Update .eslintrc.json**
+4. **Create eslint.config.mjs (Flat Config)**
    
-   Update file: `.eslintrc.json`
-   ```json
-   {
-     "extends": [
-       "next/core-web-vitals",
-       "next/typescript",
-       "prettier"
-     ],
-     "plugins": ["prettier"],
-     "rules": {
-       "prettier/prettier": "warn",
-       "@typescript-eslint/no-unused-vars": ["warn", {
-         "argsIgnorePattern": "^_",
-         "varsIgnorePattern": "^_"
-       }],
-       "@typescript-eslint/no-explicit-any": "warn",
-       "react-hooks/exhaustive-deps": "warn",
-       "no-console": ["warn", { "allow": ["warn", "error"] }]
-     }
-   }
+   Create file: `eslint.config.mjs`
+   ```javascript
+   import nextPlugin from "eslint-config-next";
+   import tseslint from "@typescript-eslint/eslint-plugin";
+   import tsparser from "@typescript-eslint/parser";
+   
+   const config = [
+     {
+       ignores: [".next/*", "node_modules/*", "out/*", ".cache/*"],
+     },
+     ...nextPlugin,
+     {
+       files: ["**/*.ts", "**/*.tsx"],
+       languageOptions: {
+         parser: tsparser,
+         parserOptions: {
+           ecmaVersion: "latest",
+           sourceType: "module",
+         },
+       },
+       plugins: {
+         "@typescript-eslint": tseslint,
+       },
+       rules: {
+         "@typescript-eslint/no-unused-vars": ["warn", {
+           argsIgnorePattern: "^_",
+           varsIgnorePattern: "^_",
+         }],
+         "@typescript-eslint/no-explicit-any": "warn",
+         "react-hooks/exhaustive-deps": "warn",
+         "no-console": ["warn", { allow: ["warn", "error"] }],
+       },
+     },
+   ];
+   
+   export default config;
    ```
 
 5. **Add Scripts to package.json**
@@ -1009,8 +972,8 @@ npm run dev
        "dev": "next dev",
        "build": "next build",
        "start": "next start",
-       "lint": "next lint",
-       "lint:fix": "next lint --fix",
+       "lint": "eslint .",
+       "lint:fix": "eslint . --fix",
        "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
        "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
        "type-check": "tsc --noEmit"
@@ -1042,15 +1005,19 @@ npm run type-check
 ```
 
 **Acceptance Criteria**:
+- [ ] ESLint 9 installed with flat config
 - [ ] Prettier configured and installed
-- [ ] ESLint configured with Prettier integration
+- [ ] eslint.config.mjs created (NOT .eslintrc.json)
 - [ ] Scripts added to package.json
 - [ ] All existing code formatted
-- [ ] Linting passes
+- [ ] Linting passes with no errors
 
 **Common Pitfalls**:
-- ⚠️ Make sure eslint-config-prettier is loaded LAST in extends array
-- ⚠️ If format conflicts with lint, Prettier should win
+- ⚠️ Next.js 16 does NOT support `next lint` command - use `eslint .` directly
+- ⚠️ ESLint 9 requires flat config format (`eslint.config.mjs`), NOT `.eslintrc.json`
+- ⚠️ Do NOT use `--ext` flag with ESLint 9 (it's deprecated in flat config)
+- ⚠️ Make sure `eslint-config-next` version matches your Next.js version
+- ⚠️ If you see "Converting circular structure to JSON" errors, ensure you're using the exact config format above
 
 **Reference PRD Sections**: 
 - Development & Tooling (Page 2243-2252)
