@@ -48,3 +48,8 @@ next-env.d.ts
 *.swp
 *.swo
 *~
+
+# Google Cloud
+vertex-ai-credentials.json
+google-credentials.json
+*-credentials.json

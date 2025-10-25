@@ -1,0 +1,117 @@
+Imagen on Vertex AI | AI Image Generator
+
+Imagen on Vertex AI brings Google's state of the art image generative AI capabilities to application developers. With Imagen on Vertex AI, application developers can build next-generation AI products that transform their user's imagination into high quality visual assets using AI generation, in seconds.
+
+With Imagen, you can do the following:
+
+Generate novel images using only a text prompt (text-to-image AI generation).
+Edit or expand an uploaded or generated image using a mask area you define.
+Upscale existing, generated, or edited images.
+
+Quickstart: Generate images from text prompts
+You can generate novel images using only descriptive text as an input. The following samples show a simplified case for generating images, but you can use additional parameters to tailor the generated images to your needs.
+
+1) In the Google Cloud console, on the project selector page, select or create a Google Cloud project.
+Roles required to select or create a project
+
+Select a project: Selecting a project doesn't require a specific IAM role—you can select any project that you've been granted a role on.
+Create a project: To create a project, you need the Project Creator (roles/resourcemanager.projectCreator), which contains the resourcemanager.projects.create permission.
+
+2) Verify that billing is enabled for your Google Cloud project.
+
+3)Enable the Vertex AI API.
+
+Roles required to enable APIs
+
+To enable APIs, you need the Service Usage Admin IAM role (roles/serviceusage.serviceUsageAdmin), which contains the serviceusage.services.enable permission.
+
+4) Set up authentication for your environment.
+
+PYTHON: To use the Python samples on this page in a local development environment, install and initialize the gcloud CLI, and then set up Application Default Credentials with your user credentials.
+
+Install the Google Cloud CLI.
+
+If you're using an external identity provider (IdP), you must first sign in to the gcloud CLI with your federated identity.
+
+If you're using a local shell, then create local authentication credentials for your user account:
+
+
+
+gcloud auth application-default login
+You don't need to do this if you're using Cloud Shell.
+
+If an authentication error is returned, and you are using an external identity provider (IdP), confirm that you have signed in to the gcloud CLI with your federated identity.
+
+For more information, see Set up ADC for a local development environment in the Google Cloud authentication documentation.
+
+REST: To use the REST API samples on this page in a local development environment, you use the credentials you provide to the gcloud CLI.
+
+Install the Google Cloud CLI.
+
+If you're using an external identity provider (IdP), you must first sign in to the gcloud CLI with your federated identity.
+
+For more information, see Authenticate for using REST in the Google Cloud authentication documentation.
+
+5) Use the following samples to generate an image:
+
+PYTHON:
+from google import genai
+from google.genai.types import GenerateImagesConfig
+
+client = genai.Client()
+
+# TODO(developer): Update and un-comment below line
+# output_file = "output-image.png"
+
+image = client.models.generate_images(
+    model="imagen-4.0-generate-001",
+    prompt="A dog reading a newspaper",
+    config=GenerateImagesConfig(
+        image_size="2K",
+    ),
+)
+
+image.generated_images[0].image.save(output_file)
+
+print(f"Created output image using {len(image.generated_images[0].image.image_bytes)} bytes")
+# Example response:
+# Created output image using 1234567 bytes
+
+REST:
+Set environment variables:
+
+
+
+export GOOGLE_CLOUD_PROJECT=GOOGLE_CLOUD_PROJECT # Replace with your Google Cloud project
+export GOOGLE_CLOUD_LOCATION=us-central1 # Replace with the appropriate location for your project
+            
+Run the following:
+
+
+
+curl -X POST \
+-H "Authorization: Bearer $(gcloud auth print-access-token)" \
+-H "Content-Type: application/json; charset=utf-8" \
+"https://${GOOGLE_CLOUD_LOCATION}-aiplatform.googleapis.com/v1/projects/${GOOGLE_CLOUD_PROJECT}/locations/${GOOGLE_CLOUD_LOCATION}/publishers/google/models/imagen-4.0-generate-preview-05-20:predict" -d \
+$'{
+  "instances": [
+    {
+      "prompt": "a cat reading a book"
+    }
+  ],
+  "parameters": {
+    "sampleCount": 1
+  }
+}'
+            
+The model returns a base64 image bytes object.
+
+For more information, see the Imagen Generate images API.
+
+Product usage
+To view usage standards and content restrictions associated with Imagen on Vertex AI, see the usage guidelines.
+
+Model versions
+There are multiple image generation models that you can use. For more information, see Imagen models.
+
+

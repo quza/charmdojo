@@ -1,0 +1,102 @@
+Overview
+Imagen 4 for Image Generation brings Google's advanced text-to-image technology to application developers. Imagen boasts a variety of image generation features to help organizations create images that match their specific brand requirements with the same enterprise-grade reliability and governance you're used to with Imagen.
+
+With Imagen for Generation, you can use text prompts to generate novel images. Image generation is delivered by
+
+Imagen 4 001 model family
+Imagen 4 001, the standard model that brings a balanced performance of speed and quality, model version imagen-4.0-generate-preview-06-06
+Imagen 4 Ultra 001, the slower speed, better quality and more expensive variant imagen-4.0-ultra-generate-preview-06-06
+Imagen 4 Fast 001, the fast version variant imagen-4.0-fast-generate-preview-06-06
+For Imagen 4 001, supported languages for text prompts in Imagen Generation include English, Chinese, Hindi, Japanese, Korean, Portuguese, Spanish, German, and French.
+
+Use cases
+Generate images: Enter text prompts to generate a series of images. For example, "A French cafe with the Golden Gate Bridge in the background."
+Documentation
+Get started
+You can use Imagen for Generation in the Google Cloud console or send in a request to the Vertex AI API.
+
+Generate images using text prompts
+Using the console
+
+Click Open in Vertex AI Studio
+In the Write your prompt field, enter a description for the images you want to generate. For details about writing effective prompts, see the Prompt and image attribute guide.
+Optional. Change the parameters.
+Optional. You can specify the model version in the Model options menu.
+Click Generate to generate images
+Using the API (curl)
+
+Before using any of the request data, make the following replacements:
+
+PROJECT_ID: Your Google Cloud project ID.
+TEXT_PROMPT: The text prompt guides what images the model generates. This field is required for generation.
+IMAGE_COUNT: The number of generated images. Accepted integer values: 1-4.
+
+HTTP method and URL:
+POST https://us-central1-aiplatform.googleapis.com/v1/projects/PROJECT_ID/locations/us-central1/publishers/google/models/imagen-4.0-generate-preview-06-06:predict
+
+Request JSON body:
+{
+  "instances": [
+    {
+      "prompt": "TEXT_PROMPT"
+    }
+  ],
+  "parameters": {
+    "sampleCount": IMAGE_COUNT
+  }
+}
+
+Save the request body in a file named request.json and execute the following command:
+curl -X POST \
+    -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+    -H "Content-Type: application/json; charset=utf-8" \
+    -d @request.json \
+    "https://us-central1-aiplatform.googleapis.com/v1/projects/PROJECT_ID/locations/us-central1/publishers/google/models/imagen-4.0-generate-preview-06-06:predict"
+
+You can also set the model version by imagen-4.0-ultra-generate-preview-06-06 or imagen-4.0-fast-generate-preview-06-06 instead of imagen-4.0-generate-preview-06-06 as in the following command:
+
+curl -X POST \
+    -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+    -H "Content-Type: application/json; charset=utf-8" \
+    -d @request.json \
+    "https://us-central1-aiplatform.googleapis.com/v1/projects/PROJECT_ID/locations/us-central1/publishers/google/models/imagen-4.0-ultra-generate-preview-06-06:predict"
+
+curl -X POST \
+    -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+    -H "Content-Type: application/json; charset=utf-8" \
+    -d @request.json \
+    "https://us-central1-aiplatform.googleapis.com/v1/projects/PROJECT_ID/locations/us-central1/publishers/google/models/imagen-4.0-fast-generate-preview-06-06:predict"
+
+Example response
+The following sample response is for a request with sampleCount as 2. The response returns two prediction objects, with the generated image bytes base64-encoded.
+{
+  "predictions": [
+    {
+      "bytesBase64Encoded": "BASE64_IMG_BYTES",
+      "mimeType": "image/png"
+    },
+    {
+      "mimeType": "image/png",
+      "bytesBase64Encoded": "BASE64_IMG_BYTES"
+    }
+  ]
+}
+
+Advanced parameters
+When you generate images there are many parameters you can set depending on your use case. The following are some useful parameters you can use. To see the full list, go to the Imagen for image generation API reference
+
+Prompt enhancement (enhancePrompt, available for Imagen 4 model family): Let Vertex AI backend to enhance the input prompt with an LLM-based prompt rewriting tool. Enabled by default. Set to false to disable prompt enhancement.
+
+Versions
+Resource ID	Release date	Release stage	Description
+imagen-4.0-generate-preview-06-06	2025-06-06	Public Preview	Imagen 4: Support Generation with 1:1, 9:16, 16:9, 3:4, 4:3 aspect ratios and watermarking (SynthID).
+imagen-4.0-ultra-generate-preview-06-06	2025-06-06	Public Preview	Imagen 4 Ultra: Support Generation with 1:1, 9:16, 16:9, 3:4, 4:3 aspect ratios and watermarking (SynthID).
+imagen-4.0-fast-generate-preview-06-06	2025-06-06	Public Preview	Imagen 4 Fast: Support Generation with 1:1, 9:16, 16:9, 3:4, 4:3 aspect ratios and watermarking (SynthID).
+imagen-4.0-generate-preview-05-20	2025-05-20	Public Preview	Imagen 4: Support Generation with 1:1, 9:16, 16:9, 3:4, 4:3 aspect ratios and watermarking (SynthID).
+imagen-4.0-ultra-generate-preview-05-20	2025-05-20	Public Preview	Imagen 4 Ultra: Support Generation with 1:1, 9:16, 16:9, 3:4, 4:3 aspect ratios and watermarking (SynthID).
+imagen-3.0-generate-002	2025-01-23	GA	Imagen 3: Support Generation with 1:1, 9:16, 16:9, 3:4, 4:3 aspect ratios and watermarking (SynthID).
+imagen-3.0-generate-001	2024-07-31	GA	Imagen 3: Support Generation with 1:1, 9:16, 16:9, 3:4, 4:3 aspect ratios and watermarking (SynthID).
+imagen-3.0-fast-generate-001	2024-07-31	GA	Imagen 3 fast: Support Generation of lower latency version with 1:1, 9:16, 16:9, 3:4, 4:3 aspect ratios and watermarking (SynthID).
+imagegeneration@006	2024-04-09	GA	Imagen 2: Supports Generation with 1:1, 9:16, 16:9, 3:4, 4:3 aspect ratios and watermarking (SynthID). Supports editing with four editing modes
+imagegeneration@005	2023-12-11	GA	Imagen 2: Supports generation with 1:1 and 9:16 aspect ratios
+imagegeneration@002	2023-07-17	GA	Imagen 1: GA version that supports both generation and editing features

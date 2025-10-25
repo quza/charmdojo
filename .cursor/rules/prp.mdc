@@ -1,9 +1,6 @@
 ---
-description: PRP methodology - global Cursor rule (applies to all PRPs)
-globs: PRPs/**/*.md
-alwaysApply: true
+alwaysApply: false
 ---
-
 # PRP Methodology - Cursor Global Rule
 
 This file provides guidance to Cursor Agents when working with code in this repository.
