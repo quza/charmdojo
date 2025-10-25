@@ -1,0 +1,64 @@
+{
+  "timestamp": "2025-10-25T21:06:33.469Z",
+  "girls": [
+    {
+      "name": "Serenity",
+      "attributes": {
+        "ethnicity": "African American",
+        "hairColor": "Red",
+        "eyeColor": "Blue",
+        "bodyType": "Petite",
+        "hairstyle": "Medium length straight",
+        "setting": "Beach"
+      }
+    },
+    {
+      "name": "Julia",
+      "attributes": {
+        "ethnicity": "Pacific Islander",
+        "hairColor": "Dark red",
+        "eyeColor": "Honey brown",
+        "bodyType": "Slim",
+        "hairstyle": "Beach waves",
+        "setting": "Art gallery"
+      }
+    },
+    {
+      "name": "Isabelle",
+      "attributes": {
+        "ethnicity": "Southeast Asian",
+        "hairColor": "Golden brown",
+        "eyeColor": "Dark brown",
+        "bodyType": "Lean",
+        "hairstyle": "Tight curls",
+        "setting": "Bookstore"
+      }
+    }
+  ],
+  "results": [
+    {
+      "success": true,
+      "imageUrl": "https://ketkanvkuzmnbsebeuax.supabase.co/storage/v1/object/public/girl-images/serenity_1761426389009_r848r0nwxkb.png",
+      "usedPlaceholder": false,
+      "generationTime": 6.535
+    },
+    {
+      "success": true,
+      "imageUrl": "https://ketkanvkuzmnbsebeuax.supabase.co/storage/v1/object/public/girl-images/julia_1761426388754_033mmeaj9jex.png",
+      "usedPlaceholder": false,
+      "generationTime": 5.695
+    },
+    {
+      "success": true,
+      "imageUrl": "https://ketkanvkuzmnbsebeuax.supabase.co/storage/v1/object/public/girl-images/isabelle_1761426389113_e90v77omtto.png",
+      "usedPlaceholder": false,
+      "generationTime": 5.994
+    }
+  ],
+  "summary": {
+    "totalTime": 6.536,
+    "successCount": 3,
+    "placeholderCount": 0,
+    "failedCount": 0
+  }
+}
