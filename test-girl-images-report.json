@@ -1,36 +1,36 @@
 {
-  "timestamp": "2025-10-25T21:06:33.469Z",
+  "timestamp": "2025-10-25T21:27:14.162Z",
   "girls": [
     {
-      "name": "Serenity",
+      "name": "Elena",
       "attributes": {
-        "ethnicity": "African American",
-        "hairColor": "Red",
-        "eyeColor": "Blue",
-        "bodyType": "Petite",
-        "hairstyle": "Medium length straight",
+        "ethnicity": "Pacific Islander",
+        "hairColor": "Black",
+        "eyeColor": "Hazel",
+        "bodyType": "Toned",
+        "hairstyle": "Bangs with long hair",
         "setting": "Beach"
       }
     },
     {
-      "name": "Julia",
+      "name": "Katherine",
       "attributes": {
-        "ethnicity": "Pacific Islander",
-        "hairColor": "Dark red",
-        "eyeColor": "Honey brown",
-        "bodyType": "Slim",
-        "hairstyle": "Beach waves",
-        "setting": "Art gallery"
+        "ethnicity": "Mixed race",
+        "hairColor": "Strawberry blonde",
+        "eyeColor": "Gray-blue",
+        "bodyType": "Petite",
+        "hairstyle": "Short bob",
+        "setting": "Coffee shop"
       }
     },
     {
-      "name": "Isabelle",
+      "name": "Scarlett",
       "attributes": {
-        "ethnicity": "Southeast Asian",
-        "hairColor": "Golden brown",
+        "ethnicity": "Asian",
+        "hairColor": "Jet black",
         "eyeColor": "Dark brown",
-        "bodyType": "Lean",
-        "hairstyle": "Tight curls",
+        "bodyType": "Muscular",
+        "hairstyle": "Layered",
         "setting": "Bookstore"
       }
     }
@@ -38,25 +38,25 @@
   "results": [
     {
       "success": true,
-      "imageUrl": "https://ketkanvkuzmnbsebeuax.supabase.co/storage/v1/object/public/girl-images/serenity_1761426389009_r848r0nwxkb.png",
+      "imageUrl": "https://ketkanvkuzmnbsebeuax.supabase.co/storage/v1/object/public/girl-images/elena_1761427628825_185vz1fbx4u.png",
       "usedPlaceholder": false,
-      "generationTime": 6.535
+      "generationTime": 5.461
     },
     {
       "success": true,
-      "imageUrl": "https://ketkanvkuzmnbsebeuax.supabase.co/storage/v1/object/public/girl-images/julia_1761426388754_033mmeaj9jex.png",
+      "imageUrl": "https://ketkanvkuzmnbsebeuax.supabase.co/storage/v1/object/public/girl-images/katherine_1761427628879_5tvbx0sinm5.png",
       "usedPlaceholder": false,
-      "generationTime": 5.695
+      "generationTime": 6.246
     },
     {
       "success": true,
-      "imageUrl": "https://ketkanvkuzmnbsebeuax.supabase.co/storage/v1/object/public/girl-images/isabelle_1761426389113_e90v77omtto.png",
+      "imageUrl": "https://ketkanvkuzmnbsebeuax.supabase.co/storage/v1/object/public/girl-images/scarlett_1761427629554_o03hnm88r5.png",
       "usedPlaceholder": false,
-      "generationTime": 5.994
+      "generationTime": 6.219
     }
   ],
   "summary": {
-    "totalTime": 6.536,
+    "totalTime": 6.247,
     "successCount": 3,
     "placeholderCount": 0,
     "failedCount": 0

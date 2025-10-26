@@ -13,31 +13,53 @@ import type { GenerateGirlsResponse, Girl } from '@/types/game';
 
 // Rate limiting map (in-memory, production should use Redis)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 5;
+
+// Environment-based rate limiting
+const isDevelopment = process.env.NODE_ENV === 'development';
+const RATE_LIMIT_WINDOW = isDevelopment ? 60 * 1000 : 2 * 60 * 1000; // 1 min dev, 2 min prod
+const MAX_REQUESTS_PER_WINDOW = isDevelopment ? 20 : 10; // More generous limits
 
 /**
  * Check rate limit for a user
+ * @returns { allowed: boolean; resetAt?: number; remaining?: number }
  */
-function checkRateLimit(userId: string): boolean {
+function checkRateLimit(userId: string): { 
+  allowed: boolean; 
+  resetAt: number; 
+  remaining: number;
+} {
   const now = Date.now();
   const userLimit = rateLimitMap.get(userId);
 
   if (!userLimit || now > userLimit.resetAt) {
     // Reset or initialize
+    const resetAt = now + RATE_LIMIT_WINDOW;
     rateLimitMap.set(userId, {
       count: 1,
-      resetAt: now + RATE_LIMIT_WINDOW,
+      resetAt,
     });
-    return true;
+    return {
+      allowed: true,
+      resetAt,
+      remaining: MAX_REQUESTS_PER_WINDOW - 1,
+    };
   }
 
   if (userLimit.count >= MAX_REQUESTS_PER_WINDOW) {
-    return false;
+    return {
+      allowed: false,
+      resetAt: userLimit.resetAt,
+      remaining: 0,
+    };
   }
 
   userLimit.count += 1;
-  return true;
+  
+  return {
+    allowed: true,
+    resetAt: userLimit.resetAt,
+    remaining: MAX_REQUESTS_PER_WINDOW - userLimit.count,
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -58,13 +80,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 2: Check rate limit
-    if (!checkRateLimit(user.id)) {
+    const rateLimit = checkRateLimit(user.id);
+    
+    if (!rateLimit.allowed) {
+      const secondsUntilReset = Math.ceil((rateLimit.resetAt - Date.now()) / 1000);
+      const minutesUntilReset = Math.ceil(secondsUntilReset / 60);
+      
       return NextResponse.json(
         {
           error: 'rate_limit_exceeded',
-          message: 'Too many requests. Please wait before trying again.',
+          message: `Too many generation requests. Please wait ${minutesUntilReset} minute${minutesUntilReset > 1 ? 's' : ''} before trying again.`,
+          resetAt: rateLimit.resetAt,
+          secondsUntilReset,
         },
-        { status: 429 }
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': secondsUntilReset.toString(),
+            'X-RateLimit-Limit': MAX_REQUESTS_PER_WINDOW.toString(),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimit.resetAt.toString(),
+          }
+        }
       );
     }
 
@@ -122,7 +159,14 @@ export async function POST(request: NextRequest) {
     console.log(`   Placeholders: ${placeholdersUsed}`);
     console.log('');
 
-    return NextResponse.json(response, { status: 200 });
+    return NextResponse.json(response, { 
+      status: 200,
+      headers: {
+        'X-RateLimit-Limit': MAX_REQUESTS_PER_WINDOW.toString(),
+        'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+        'X-RateLimit-Reset': rateLimit.resetAt.toString(),
+      }
+    });
   } catch (error) {
     console.error('❌ Error in generate-girls API:', error);
 

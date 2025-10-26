@@ -4,6 +4,7 @@
  */
 
 import { GoogleAuth } from 'google-auth-library';
+import { withRetry } from '@/lib/utils/retry';
 
 interface ImagenGenerationParams {
   prompt: string;
@@ -145,29 +146,22 @@ export async function generateImage(
 
 /**
  * Generate image with automatic retry on failure
+ * Uses intelligent retry logic with exponential backoff
  */
 export async function generateImageWithRetry(
   params: ImagenGenerationParams,
   maxRetries = 3
 ): Promise<GeneratedImage[]> {
-  let lastError: Error | null = null;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await generateImage(params);
-    } catch (error) {
-      lastError = error as Error;
-      console.error(`⚠️ Attempt ${attempt}/${maxRetries} failed:`, error);
-
-      if (attempt < maxRetries) {
-        const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
-        console.log(`⏳ Retrying in ${delay / 1000}s...`);
-        await new Promise((resolve) => setTimeout(resolve, delay));
+  return withRetry(
+    () => generateImage(params),
+    {
+      maxAttempts: maxRetries,
+      initialDelay: 1000,
+      maxDelay: 8000,
+      backoffMultiplier: 2,
+      onRetry: (error, attempt) => {
+        console.warn(`🔄 Imagen retry attempt ${attempt}: ${error.message}`);
       }
     }
-  }
-
-  throw new Error(
-    `Failed after ${maxRetries} attempts: ${lastError?.message}`
   );
 }

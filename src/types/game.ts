@@ -56,3 +56,22 @@ export interface APIError {
   message: string;
   details?: unknown;
 }
+
+/**
+ * Vision API response for girl description generation
+ */
+export interface VisionAPIResponse {
+  description: string;
+  tokensUsed?: number;
+  generationTime: number;
+  usedFallback: boolean;
+}
+
+/**
+ * Options for description generation
+ */
+export interface DescriptionGenerationOptions {
+  timeout?: number; // milliseconds, default: 10000
+  maxTokens?: number; // default: 500
+  fallbackEnabled?: boolean; // default: true
+}

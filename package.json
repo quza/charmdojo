@@ -12,7 +12,8 @@
     "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "type-check": "tsc --noEmit",
     "test:imagen": "tsx src/lib/ai/test-imagen.ts",
-    "test:girl-images": "tsx src/lib/services/test-girl-image-generation.ts"
+    "test:girl-images": "tsx src/lib/services/test-girl-image-generation.ts",
+    "test:vision": "tsx src/lib/ai/test-vision.ts"
   },
   "dependencies": {
     "@google-cloud/aiplatform": "^5.11.0",
@@ -31,6 +32,7 @@
     "lucide-react": "^0.546.0",
     "next": "16.0.0",
     "next-themes": "^0.4.6",
+    "openai": "^6.7.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.65.0",
