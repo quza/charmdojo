@@ -1,14 +1,18 @@
 /**
  * POST /api/game/generate-girls
  * 
- * Generate 3 diverse girl profiles with AI-generated images
+ * Generate or select 3 diverse girl profiles
+ * - If pool < 2000: Generate new girls and add to pool
+ * - If pool >= 2000: Select random girls from pool
  * Requires authentication
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/supabase/server-utils';
 import { generateGirlProfiles } from '@/lib/utils/girl-generator';
-import { generateMultipleGirlImages } from '@/lib/services/girl-image-service';
+import { generateGirlImageWithFallback } from '@/lib/services/girl-image-service';
+import { getPoolSize, getRandomGirlsFromPool, markGirlAsUsed } from '@/lib/services/girl-pool-service';
+import { getRandomFallbackImages, getNameFromFallbackFile } from '@/lib/utils/fallback-images';
 import type { GenerateGirlsResponse, Girl } from '@/types/game';
 
 // Rate limiting map (in-memory, production should use Redis)
@@ -107,25 +111,90 @@ export async function POST(request: NextRequest) {
 
     console.log(`\n🎮 Generating girls for user: ${user.email}`);
 
-    // Step 3: Generate girl profiles with attributes
-    const generatedGirls = generateGirlProfiles(3);
-    console.log(`✓ Generated ${generatedGirls.length} girl profiles with attributes`);
-
-    // Step 4: Generate images in parallel
-    const imageResults = await generateMultipleGirlImages(generatedGirls);
-
-    // Step 5: Build Girl objects with image URLs
-    const girls: Girl[] = generatedGirls.map((girl, index) => {
-      const imageResult = imageResults[index];
+    // Step 3: Check pool size (use Supabase MCP)
+    const poolSize = await getPoolSize();
+    console.log(`📊 Current pool size: ${poolSize}/2000`);
+    
+    let girls: Girl[];
+    
+    if (poolSize >= 2000) {
+      // POOL MODE: Select 3 random girls from pool
+      console.log('✓ Pool at capacity, selecting from existing profiles');
       
-      return {
-        id: `girl_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-        name: girl.name,
-        imageUrl: imageResult.imageUrl || '', // Empty string if failed
-        attributes: girl.attributes,
-      };
-    });
-
+      try {
+        const poolGirls = await getRandomGirlsFromPool(3);
+        
+        if (poolGirls.length === 3) {
+          // Mark as used (use Supabase MCP)
+          await Promise.all(poolGirls.map(g => markGirlAsUsed(g.id)));
+          
+          girls = poolGirls.map(pg => ({
+            id: pg.id,
+            name: pg.name,
+            imageUrl: pg.image_url,
+            attributes: {
+              ethnicity: pg.ethnicity,
+              hairColor: pg.haircolor,
+              eyeColor: pg.eyecolor,
+              bodyType: pg.bodytype,
+              hairstyle: pg.hairstyle,
+              setting: pg.setting,
+            },
+          }));
+          
+          console.log(`✓ Selected 3 girls from pool`);
+        } else {
+          throw new Error('Pool query returned insufficient girls');
+        }
+      } catch (poolError) {
+        console.error('❌ Pool selection failed, using local fallback:', poolError);
+        
+        // Fallback to local images
+        const fallbackUrls = getRandomFallbackImages(3);
+        
+        girls = fallbackUrls.map((url, index) => {
+          const filename = url.split('/').pop() || '';
+          const name = getNameFromFallbackFile(filename);
+          
+          return {
+            id: `fallback_${Date.now()}_${index}`,
+            name,
+            imageUrl: url,
+            attributes: {
+              ethnicity: 'Unknown',
+              hairColor: 'Unknown',
+              eyeColor: 'Unknown',
+              bodyType: 'Average',
+              hairstyle: 'Unknown',
+              setting: 'Unknown',
+            },
+          };
+        });
+      }
+    } else {
+      // GENERATION MODE: Generate new girls and add to pool
+      console.log(`✓ Pool building mode (${2000 - poolSize} remaining)`);
+      
+      const generatedGirls = generateGirlProfiles(3);
+      const imageResults = await Promise.all(
+        generatedGirls.map(girl => generateGirlImageWithFallback(girl))
+      );
+      
+      girls = generatedGirls.map((girl, index) => {
+        const imageResult = imageResults[index];
+        
+        return {
+          id: `girl_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+          name: girl.name,
+          imageUrl: imageResult.imageUrl || '',
+          attributes: girl.attributes,
+        };
+      });
+      
+      const successCount = girls.filter(g => g.imageUrl !== '').length;
+      console.log(`✓ Generated ${successCount}/3 girls, added to pool`);
+    }
+    
     // Filter out girls with failed image generation
     const successfulGirls = girls.filter(g => g.imageUrl !== '');
 
@@ -141,22 +210,20 @@ export async function POST(request: NextRequest) {
 
     // Calculate metadata
     const totalTime = (Date.now() - startTime) / 1000;
-    const placeholdersUsed = imageResults.filter(r => r.usedPlaceholder).length;
-    const failedGenerations = imageResults.filter(r => !r.success).length;
 
     const response: GenerateGirlsResponse = {
       success: true,
       girls: successfulGirls,
       metadata: {
         totalTime,
-        placeholdersUsed,
-        failedGenerations,
+        poolSize,
+        poolMode: poolSize >= 2000,
       },
     };
 
     console.log(`✅ API response ready (${totalTime.toFixed(2)}s)`);
-    console.log(`   Successful: ${successfulGirls.length}/${generatedGirls.length}`);
-    console.log(`   Placeholders: ${placeholdersUsed}`);
+    console.log(`   Successful: ${successfulGirls.length}/3`);
+    console.log(`   Pool mode: ${poolSize >= 2000}`);
     console.log('');
 
     return NextResponse.json(response, { 

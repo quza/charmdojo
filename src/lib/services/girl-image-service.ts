@@ -9,6 +9,8 @@ import { generateImageWithRetry } from '@/lib/ai/imagen';
 import { substituteGirlPrompt, validatePrompt } from '@/lib/utils/prompt-substitutor';
 import { generatePlaceholderImage } from '@/lib/utils/placeholder-generator';
 import { uploadGirlImage, generateImageFilename } from '@/lib/supabase/storage';
+import { getRandomGirlsFromPool, addGirlToPool } from './girl-pool-service';
+import { getRandomFallbackImages } from '@/lib/utils/fallback-images';
 import type { GeneratedGirl } from '@/types/game';
 
 export interface GirlImageResult {
@@ -17,6 +19,8 @@ export interface GirlImageResult {
   usedPlaceholder: boolean;
   generationTime: number;
   error?: string;
+  fromPool?: boolean;
+  fromLocalFallback?: boolean;
 }
 
 /**
@@ -135,6 +139,133 @@ export async function generateMultipleGirlImages(
   console.log('');
 
   return results;
+}
+
+/**
+ * Generate girl image with multi-tier fallback
+ * 
+ * Fallback hierarchy:
+ * 1. Try Imagen API generation
+ * 2. If fails, try random girl from Supabase pool
+ * 3. If fails, use local fallback images
+ * 4. Last resort: generate placeholder SVG
+ * 
+ * @param girl - Generated girl profile with attributes
+ * @returns Result object with image URL and metadata
+ */
+export async function generateGirlImageWithFallback(
+  girl: GeneratedGirl
+): Promise<GirlImageResult> {
+  const startTime = Date.now();
+  
+  console.log(`🎨 Generating image for ${girl.name} (with fallback)...`);
+  console.log(`   Attributes:`, girl.attributes);
+
+  try {
+    // Step 1: Try Imagen generation
+    const prompt = substituteGirlPrompt(girl.attributes);
+    
+    if (!validatePrompt(prompt)) {
+      throw new Error('Prompt validation failed - placeholders not replaced');
+    }
+
+    console.log(`   ✓ Prompt generated (${prompt.length} chars)`);
+
+    let imageBuffer: Buffer;
+    let source: 'imagen' | 'placeholder' | 'fallback' = 'imagen';
+
+    try {
+      const images = await generateImageWithRetry(
+        {
+          prompt,
+          sampleCount: 1,
+          aspectRatio: '3:4',
+        },
+        3 // Max 3 retry attempts
+      );
+
+      imageBuffer = images[0].buffer;
+      console.log(`   ✓ Image generated via Imagen (${(imageBuffer.length / 1024).toFixed(2)} KB)`);
+    } catch (imagenError) {
+      console.error(`   ✗ Imagen generation failed, trying pool fallback...`);
+      
+      // Step 2: Try getting random girl from Supabase pool
+      try {
+        const poolGirls = await getRandomGirlsFromPool(1);
+        
+        if (poolGirls.length > 0) {
+          const poolGirl = poolGirls[0];
+          console.log(`   ✓ Using pool fallback: ${poolGirl.name}`);
+          
+          return {
+            success: true,
+            imageUrl: poolGirl.image_url,
+            usedPlaceholder: false,
+            generationTime: (Date.now() - startTime) / 1000,
+            fromPool: true,
+          };
+        }
+      } catch (poolError) {
+        console.error(`   ✗ Pool fallback failed, trying local fallback...`);
+      }
+      
+      // Step 3: Use local fallback images
+      const fallbackUrls = getRandomFallbackImages(1);
+      
+      if (fallbackUrls.length > 0) {
+        console.log(`   ✓ Using local fallback image`);
+        
+        return {
+          success: true,
+          imageUrl: fallbackUrls[0],
+          usedPlaceholder: false,
+          generationTime: (Date.now() - startTime) / 1000,
+          fromLocalFallback: true,
+        };
+      }
+      
+      // Last resort: generate placeholder
+      console.log(`   ⚠️  All fallbacks failed, generating placeholder...`);
+      imageBuffer = await generatePlaceholderImage(girl);
+      source = 'placeholder';
+    }
+
+    // Upload to Supabase Storage
+    const filename = generateImageFilename(girl.name);
+    const imageUrl = await uploadGirlImage(imageBuffer, filename);
+    
+    // Add to pool with attributes (use Supabase MCP)
+    await addGirlToPool({
+      name: girl.name,
+      image_url: imageUrl,
+      attributes: girl.attributes,
+      source,
+      generation_prompt: prompt,
+    });
+    
+    const generationTime = (Date.now() - startTime) / 1000;
+    console.log(`   ✅ Complete for ${girl.name} (${generationTime.toFixed(2)}s)`);
+
+    return {
+      success: true,
+      imageUrl,
+      usedPlaceholder: source === 'placeholder',
+      generationTime,
+    };
+  } catch (error) {
+    const generationTime = (Date.now() - startTime) / 1000;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    console.error(`   ❌ Failed to generate image for ${girl.name}:`, error);
+
+    return {
+      success: false,
+      imageUrl: '',
+      usedPlaceholder: false,
+      generationTime,
+      error: errorMessage,
+    };
+  }
 }
 
 /**

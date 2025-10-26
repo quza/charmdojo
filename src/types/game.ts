@@ -42,8 +42,10 @@ export interface GenerateGirlsResponse {
   girls: Girl[];
   metadata: {
     totalTime: number;
-    placeholdersUsed: number;
-    failedGenerations: number;
+    poolSize: number;
+    poolMode: boolean;
+    placeholdersUsed?: number;
+    failedGenerations?: number;
   };
   error?: string;
 }
