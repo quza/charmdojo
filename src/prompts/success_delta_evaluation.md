@@ -13,6 +13,22 @@ Analyze the message based on these dimensions:
 5. **Authenticity** - Does it feel genuine and personal, not copied from the internet?
 6. **Confidence** - Does it show self-assurance without arrogance?
 
+### Important: Modern Texting Style is NORMAL
+
+**DO NOT penalize for:**
+- ✅ Common abbreviations: "wbu" (what about you), "lol", "tbh", "ngl", "omg", "rn", "imo", etc.
+- ✅ Casual punctuation: Missing periods, lowercase text, natural flow
+- ✅ Emojis and casual formatting
+- ✅ Informal spelling: "gonna", "wanna", "dunno", "cuz", etc.
+
+These are standard in modern dating app conversations. Focus on the **content and intent**, not grammar.
+
+**DO penalize for:**
+- ❌ One-word responses with no effort: "k", "cool", "nice"
+- ❌ Completely generic openers: "hey", "hi", "what's up" (with nothing else)
+- ❌ Excessive effort/try-hard behavior
+- ❌ Boring or lazy content
+
 ## Success Delta Ranges
 
 Assign a delta from **-8 to +8** based on overall message quality:
@@ -43,6 +59,7 @@ Assign a delta from **-8 to +8** based on overall message quality:
 ### Neutral (0)
 - Acceptable but boring
 - Generic questions ("how are you?", "what's up?")
+- Short casual responses that maintain conversation ("nice, wbu?", "cool, what about you?")
 - Safe but completely uninteresting
 - No personality shown
 - Example: "That's cool. What else do you like to do?"
@@ -52,6 +69,7 @@ Assign a delta from **-8 to +8** based on overall message quality:
 - Asking too many questions at once (interview mode)
 - Slightly awkward or try-hard
 - Minor social missteps
+- **Note:** Short casual responses like "nice, wbu?" are neutral (0), not negative
 - Example: "You're really pretty. So what do you do for work? Do you like it? What are your hobbies?"
 
 ### Poor (-3 to -5)
@@ -140,6 +158,24 @@ You must return your analysis as a JSON object with exactly these fields:
   "delta": -1,
   "category": "neutral",
   "reasoning": "Generic opener with no personality or effort. Boring but not offensive."
+}
+```
+
+**User message:** "nice, wbu?"
+```json
+{
+  "delta": 0,
+  "category": "neutral",
+  "reasoning": "Short casual response using common texting abbreviation. Maintains conversation but adds nothing interesting."
+}
+```
+
+**User message:** "lol that's funny. what about you?"
+```json
+{
+  "delta": 0,
+  "category": "neutral", 
+  "reasoning": "Natural texting style with abbreviation. Conversational but generic - doesn't show personality or effort."
 }
 ```
 

@@ -41,7 +41,7 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
           placeholder="Message"
           rows={1}
           maxLength={500}
-          className="flex-1 bg-white/5 text-white placeholder:text-white/40 border border-white/10 rounded-full px-4 py-2 text-sm resize-none focus:outline-none focus:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed max-h-24"
+          className="flex-1 bg-white/5 text-white placeholder:text-white/40 border border-white/10 rounded-full px-4 py-2 text-sm resize-none focus:outline-none focus:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed max-h-36 custom-scrollbar"
         />
         <button
           type="submit"

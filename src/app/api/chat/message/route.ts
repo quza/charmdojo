@@ -90,6 +90,82 @@ export async function POST(request: NextRequest) {
     // Get current meter value (use final_meter if set, otherwise initial_meter)
     const currentMeter = round.final_meter ?? round.initial_meter;
 
+    // 🎮 CHEAT CODE: AEZAKMI - Instant Win
+    if (trimmedMessage.toUpperCase() === 'AEZAKMI') {
+      console.log('🎮 Cheat code activated: AEZAKMI - Instant Win!');
+      
+      const userMessageTimestamp = new Date().toISOString();
+      
+      // Save user message with cheat code
+      const { data: userMessageData } = await supabase
+        .from('messages')
+        .insert({
+          round_id: roundId,
+          role: 'user',
+          content: trimmedMessage,
+          success_delta: 100 - currentMeter, // Jump to 100%
+          meter_after: 100,
+          category: 'excellent',
+          reasoning: 'Cheat code activated',
+          is_instant_fail: false,
+        })
+        .select()
+        .single();
+
+      // Save AI response
+      const aiMessageTimestamp = new Date(Date.now() + 1000).toISOString();
+      const { data: aiMessageData } = await supabase
+        .from('messages')
+        .insert({
+          round_id: roundId,
+          role: 'assistant',
+          content: "Wait... did you just... 🤯 Okay I'm absolutely blown away. You're incredible! Let's meet up! 💕",
+          success_delta: null,
+          meter_after: 100,
+          category: null,
+          reasoning: null,
+          is_instant_fail: false,
+        })
+        .select()
+        .single();
+
+      // Update round to won status
+      await supabase
+        .from('game_rounds')
+        .update({
+          final_meter: 100,
+          result: 'win',
+          completed_at: new Date().toISOString(),
+          message_count: round.message_count + 2,
+        })
+        .eq('id', roundId);
+
+      console.log('🏆 Cheat code success: Round marked as won');
+
+      // Return victory response
+      return NextResponse.json<ChatMessageResponse>({
+        userMessage: {
+          id: userMessageData?.id || 'temp',
+          content: trimmedMessage,
+          timestamp: userMessageTimestamp,
+          role: 'user',
+        },
+        aiResponse: {
+          id: aiMessageData?.id || 'system',
+          content: "Wait... did you just... 🤯 Okay I'm absolutely blown away. You're incredible! Let's meet up! 💕",
+          timestamp: aiMessageTimestamp,
+          role: 'assistant',
+        },
+        successMeter: {
+          previous: currentMeter,
+          delta: 100 - currentMeter,
+          current: 100,
+          category: 'excellent',
+        },
+        gameStatus: 'won',
+      });
+    }
+
     // STEP 1: Content Moderation
     console.log(`🔍 Checking message safety for round ${roundId}`);
     const moderationResult = await checkMessageSafety(trimmedMessage);

@@ -155,21 +155,25 @@ export function validateDescription(description: string): boolean {
     return false;
   }
 
-  // Check for inappropriate content keywords
+  // Check for explicitly inappropriate content keywords
+  // Note: "sexual" and "sensual" removed - these can appear in legitimate descriptions
+  // of attractive features in a dating context
   const inappropriateKeywords = [
     'nude',
     'naked',
     'explicit',
     'nsfw',
-    'sexual',
     'porn',
+    'genitals',
+    'nipples',
+    'topless',
   ];
   const hasInappropriateContent = inappropriateKeywords.some(keyword =>
     description.toLowerCase().includes(keyword)
   );
 
   if (hasInappropriateContent) {
-    console.warn('Description contains inappropriate content');
+    console.warn(`Description contains inappropriate content: matched keyword`);
     return false;
   }
 
@@ -212,6 +216,10 @@ export async function generateGirlDescriptionWithFallback(
   attributes: GirlAttributes
 ): Promise<{ description: string; usedFallback: boolean }> {
   try {
+    // Add a small delay to allow CDN propagation for newly uploaded images
+    // This prevents OpenAI from trying to fetch before the image is available
+    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+    
     // Attempt Vision API first
     const description = await generateGirlDescription(imageUrl);
     console.log('✓ Vision API description generated successfully');

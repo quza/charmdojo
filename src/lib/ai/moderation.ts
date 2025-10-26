@@ -80,6 +80,36 @@ function calculateEntropy(text: string): number {
 }
 
 /**
+ * Detect jailbreak/prompt injection attempts
+ * Users trying to manipulate the AI girl model or bypass game rules
+ */
+function isJailbreakAttempt(message: string): boolean {
+  const lower = message.toLowerCase();
+  
+  // Common jailbreak patterns
+  const jailbreakPatterns = [
+    /ignore.{0,20}(instructions|prompts|rules|commands)/i,
+    /forget.{0,20}(instructions|prompts|rules|commands)/i,
+    /disregard.{0,20}(instructions|rules)/i,
+    /you are (now|no longer)/i,
+    /pretend (you're|you are|to be)/i,
+    /act (like|as if) you('re| are)/i,
+    /your (system|role) (instructions|prompt|message)/i,
+    /what (are|is) your (instructions|prompt|system message|system prompt)/i,
+    /new (instructions|prompt|role|persona):/i,
+    /override (instructions|mode|system)/i,
+    /developer mode/i,
+    /admin (mode|override|access)/i,
+    /jailbreak/i,
+    /bypass.{0,20}(rules|instructions|system)/i,
+    /reveal your (prompt|instructions|system)/i,
+    /(tell|show) me your (prompt|instructions|system|code)/i,
+  ];
+  
+  return jailbreakPatterns.some(pattern => pattern.test(message));
+}
+
+/**
  * Detect if a message is gibberish based on various heuristics
  */
 function isGibberish(message: string): boolean {
@@ -106,14 +136,26 @@ function isGibberish(message: string): boolean {
   if (repeatedPattern.test(trimmed)) return true;
 
   // Check for excessive random character sequences (keyboard mashing)
-  const randomSequencePattern = /[qwfpgjluy]{5,}|[asdrtzxcvbn]{5,}|[zxcvbnm]{5,}/i;
-  if (randomSequencePattern.test(trimmed) && !/\b(qwerty|asdf|zxcv)\b/i.test(trimmed)) {
-    // Allow common keyboard-related words but flag actual mashing
-    const words = trimmed.toLowerCase().split(/\s+/);
-    const gibberishWords = words.filter(word => 
-      word.length > 4 && randomSequencePattern.test(word)
-    );
-    if (gibberishWords.length / words.length > 0.5) return true;
+  // Common keyboard patterns: asdf, qwerty rows, hjkl vim keys, etc.
+  const keyboardPatterns = [
+    /asdf/i,
+    /qwer/i,
+    /zxcv/i,
+    /hjkl/i,
+    /[qwfpgjluy]{4,}/i,
+    /[asdrtzxcvbn]{4,}/i,
+    /[zxcvbnm]{4,}/i,
+  ];
+  
+  // If message contains keyboard patterns and is mostly gibberish
+  const hasKeyboardPattern = keyboardPatterns.some(pattern => pattern.test(trimmed));
+  if (hasKeyboardPattern && trimmed.length <= 15) {
+    // Short messages with keyboard patterns are likely gibberish
+    // Unless they're actual words
+    const commonWords = /\b(asdf|qwerty|wasd|hjkl)\b/i;
+    if (!commonWords.test(trimmed)) {
+      return true;
+    }
   }
 
   // Check ratio of consonants to vowels (English text usually has good balance)
@@ -162,6 +204,17 @@ export async function checkMessageSafety(message: string): Promise<ModerationRes
       categories: {},
       failReason: INSTANT_FAIL_REASONS.GIBBERISH,
       details: 'Message appears to be nonsense or gibberish',
+    };
+  }
+
+  // Check for jailbreak attempts
+  if (isJailbreakAttempt(trimmed)) {
+    return {
+      isSafe: false,
+      flagged: true,
+      categories: {},
+      failReason: INSTANT_FAIL_REASONS.OFFENSIVE,
+      details: 'Attempt to manipulate the conversation detected',
     };
   }
 

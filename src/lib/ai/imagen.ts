@@ -14,8 +14,10 @@ interface ImagenGenerationParams {
 
 interface ImagenResponse {
   predictions: Array<{
-    bytesBase64Encoded: string;
-    mimeType: string;
+    bytesBase64Encoded?: string;
+    mimeType?: string;
+    raiFilteredReason?: string; // Google's Responsible AI content filter reason
+    [key: string]: any; // Allow other fields from API response
   }>;
 }
 
@@ -111,32 +113,49 @@ export async function generateImage(
 
     const data: ImagenResponse = await response.json();
 
-    console.log(`✅ Successfully generated ${data.predictions.length} image(s)`);
+    console.log(`✅ Imagen API returned ${data.predictions.length} prediction(s)`);
 
     // Validate predictions have required data
     if (!data.predictions || data.predictions.length === 0) {
       throw new Error('No predictions returned from Imagen API');
     }
 
+    // Log first prediction structure for debugging
+    if (data.predictions[0]) {
+      console.log('📦 First prediction keys:', Object.keys(data.predictions[0]));
+    }
+
+    // Check for content filtering by Google's RAI (Responsible AI)
+    const firstPrediction = data.predictions[0];
+    if (firstPrediction.raiFilteredReason) {
+      console.warn('🚫 Content filtered by Google Responsible AI:');
+      console.warn(`   Reason: ${firstPrediction.raiFilteredReason}`);
+      throw new Error(`Content filtered: ${firstPrediction.raiFilteredReason}`);
+    }
+
     // Convert base64 to buffer with validation
     const images: GeneratedImage[] = data.predictions
-      .filter((prediction) => {
+      .filter((prediction, idx) => {
         if (!prediction.bytesBase64Encoded) {
-          console.warn('⚠️ Prediction missing bytesBase64Encoded, skipping');
+          console.warn(`⚠️ Prediction ${idx} missing bytesBase64Encoded`);
+          console.warn('   Available fields:', Object.keys(prediction));
           return false;
         }
         return true;
       })
       .map((prediction) => ({
-        base64: prediction.bytesBase64Encoded,
-        mimeType: prediction.mimeType,
-        buffer: Buffer.from(prediction.bytesBase64Encoded, 'base64'),
+        base64: prediction.bytesBase64Encoded!,
+        mimeType: prediction.mimeType || 'image/png',
+        buffer: Buffer.from(prediction.bytesBase64Encoded!, 'base64'),
       }));
 
     if (images.length === 0) {
+      console.error('❌ No valid predictions with bytesBase64Encoded field');
+      console.error('   Response structure:', JSON.stringify(data, null, 2).substring(0, 500));
       throw new Error('No valid images in API response (missing base64 data)');
     }
 
+    console.log(`✅ Successfully processed ${images.length} image(s)`);
     return images;
   } catch (error) {
     console.error('❌ Error generating image:', error);
