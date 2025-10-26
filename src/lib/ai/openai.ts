@@ -37,12 +37,12 @@ function loadDescriptionPrompt(): string {
  * Generate detailed physical description using GPT-4 Vision
  * Includes automatic retry logic for transient failures
  * @param imageUrl - URL of the girl's image
- * @param timeout - Timeout in milliseconds (default: 10000)
+ * @param timeout - Timeout in milliseconds (default: 30000)
  * @returns Detailed physical description (150-300 words)
  */
 export async function generateGirlDescription(
   imageUrl: string,
-  timeout: number = 10000
+  timeout: number = 30000
 ): Promise<string> {
   return withRetry(
     async () => {
@@ -106,7 +106,7 @@ export async function generateGirlDescription(
         clearTimeout(timeoutId);
         
         if (error.name === 'AbortError') {
-          throw new Error('Vision API timeout exceeded (10 seconds)');
+          throw new Error('Vision API timeout exceeded (30 seconds)');
         }
 
         // Re-throw for retry logic or fallback handler
@@ -114,7 +114,7 @@ export async function generateGirlDescription(
       }
     },
     {
-      maxAttempts: 2,
+      maxAttempts: 3,
       initialDelay: 500,
       maxDelay: 2000,
       backoffMultiplier: 2,

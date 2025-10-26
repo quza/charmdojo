@@ -62,16 +62,16 @@ CREATE POLICY "Public can view girl profiles"
     TO public
     USING (true);
 
--- RLS Policy: Only service role can insert
-CREATE POLICY "Service role can insert girl profiles"
+-- RLS Policy: Authenticated users can insert (API routes are authenticated)
+CREATE POLICY "Authenticated users can insert girl profiles"
     ON public.girl_profiles FOR INSERT
-    TO service_role
+    TO authenticated
     WITH CHECK (true);
 
--- RLS Policy: Only service role can update
-CREATE POLICY "Service role can update girl profiles"
+-- RLS Policy: Authenticated users can update (API routes are authenticated)
+CREATE POLICY "Authenticated users can update girl profiles"
     ON public.girl_profiles FOR UPDATE
-    TO service_role
+    TO authenticated
     USING (true);
 
 -- Comments for documentation

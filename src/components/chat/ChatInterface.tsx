@@ -1,19 +1,31 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChatHeader } from './ChatHeader';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
-import { Message, GirlProfile } from '@/types/chat';
+import { SuccessMeter } from './SuccessMeter';
+import { GameOverOverlay } from './GameOverOverlay';
+import { Message, GirlProfile, ChatMessageResponse } from '@/types/chat';
 
 interface ChatInterfaceProps {
+  roundId: string;
   girl: GirlProfile;
   initialMessages: Message[];
+  initialMeter: number;
 }
 
-export function ChatInterface({ girl, initialMessages }: ChatInterfaceProps) {
+export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: ChatInterfaceProps) {
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentMeter, setCurrentMeter] = useState(initialMeter);
+  const [lastDelta, setLastDelta] = useState<number | undefined>(undefined);
+  const [showDelta, setShowDelta] = useState(false);
+  const [gameStatus, setGameStatus] = useState<'active' | 'won' | 'lost'>('active');
+  const [failReason, setFailReason] = useState<string | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // Auto-scroll to bottom when new messages arrive
@@ -21,10 +33,13 @@ export function ChatInterface({ girl, initialMessages }: ChatInterfaceProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
   
-  const handleSendMessage = (content: string) => {
-    // Add user message
+  const handleSendMessage = async (content: string) => {
+    // Clear any previous error
+    setError(null);
+    
+    // Add user message to UI immediately (optimistic update)
     const userMessage: Message = {
-      id: `msg_${Date.now()}`,
+      id: `temp_${Date.now()}`,
       role: 'user',
       content,
       timestamp: new Date().toISOString(),
@@ -33,18 +48,84 @@ export function ChatInterface({ girl, initialMessages }: ChatInterfaceProps) {
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
     
-    // Simulate AI response (mock for now)
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: `msg_${Date.now() + 1}`,
-        role: 'assistant',
-        content: 'This is a mock response. API integration will be added in a later step! 😊',
-        timestamp: new Date().toISOString(),
-      };
+    try {
+      // Call the chat API
+      const response = await fetch('/api/chat/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roundId,
+          message: content,
+          conversationHistory: messages.map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+        }),
+      });
       
-      setMessages(prev => [...prev, aiMessage]);
+      if (!response.ok) {
+        const data = await response.json();
+        
+        // Handle instant fail (403)
+        if (response.status === 403) {
+          // Add the user message with actual ID from server if available
+          if (data.userMessage) {
+            setMessages(prev => {
+              const withoutTemp = prev.filter(m => m.id !== userMessage.id);
+              return [...withoutTemp, data.userMessage];
+            });
+          }
+          
+          // Update meter to 0
+          setCurrentMeter(0);
+          setLastDelta(data.successMeter?.delta || -currentMeter);
+          setShowDelta(true);
+          
+          // Set game status to lost
+          setGameStatus('lost');
+          setFailReason(data.failReason || 'Inappropriate content detected');
+          setIsLoading(false);
+          return;
+        }
+        
+        throw new Error(data.error || 'Failed to send message');
+      }
+      
+      const data: ChatMessageResponse = await response.json();
+      
+      // Replace temp user message with actual one from server
+      setMessages(prev => {
+        const withoutTemp = prev.filter(m => m.id !== userMessage.id);
+        return [...withoutTemp, data.userMessage, data.aiResponse];
+      });
+      
+      // Update success meter
+      setCurrentMeter(data.successMeter.current);
+      setLastDelta(data.successMeter.delta);
+      setShowDelta(true);
+      
+      // Check game status
+      if (data.gameStatus === 'won') {
+        setGameStatus('won');
+        // Navigate to victory screen after a brief delay
+        setTimeout(() => {
+          router.push(`/game/victory/${roundId}`);
+        }, 1500);
+      } else if (data.gameStatus === 'lost') {
+        setGameStatus('lost');
+        setFailReason('Success meter dropped too low');
+      }
+      
       setIsLoading(false);
-    }, 1500);
+      
+    } catch (err: any) {
+      console.error('Failed to send message:', err);
+      setError(err.message || 'Failed to send message. Please try again.');
+      
+      // Remove the temporary user message on error
+      setMessages(prev => prev.filter(m => m.id !== userMessage.id));
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -59,6 +140,9 @@ export function ChatInterface({ girl, initialMessages }: ChatInterfaceProps) {
           {/* Header */}
           <ChatHeader girlName={girl.name} girlImageUrl={girl.imageUrl} />
           
+          {/* Success Meter */}
+          <SuccessMeter value={currentMeter} delta={lastDelta} showDelta={showDelta} />
+          
           {/* Messages Container */}
           <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
             {messages.map((message) => (
@@ -68,6 +152,13 @@ export function ChatInterface({ girl, initialMessages }: ChatInterfaceProps) {
                 girlImageUrl={message.role === 'assistant' ? girl.imageUrl : undefined}
               />
             ))}
+            
+            {/* Error message */}
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-center">
+                <p className="text-sm text-red-300">{error}</p>
+              </div>
+            )}
             
             {/* Loading indicator */}
             {isLoading && (
@@ -89,7 +180,16 @@ export function ChatInterface({ girl, initialMessages }: ChatInterfaceProps) {
           </div>
           
           {/* Input */}
-          <MessageInput onSendMessage={handleSendMessage} disabled={isLoading} />
+          <MessageInput onSendMessage={handleSendMessage} disabled={isLoading || gameStatus !== 'active'} />
+          
+          {/* Game Over Overlay */}
+          {gameStatus === 'lost' && (
+            <GameOverOverlay 
+              finalMeter={currentMeter} 
+              failReason={failReason}
+              roundId={roundId}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -235,10 +235,18 @@ export async function generateGirlImageWithFallback(
     const imageUrl = await uploadGirlImage(imageBuffer, filename);
     
     // Add to pool with attributes (use Supabase MCP)
+    // Map camelCase attributes to lowercase for database
     await addGirlToPool({
       name: girl.name,
       image_url: imageUrl,
-      attributes: girl.attributes,
+      attributes: {
+        ethnicity: girl.attributes.ethnicity,
+        hairstyle: girl.attributes.hairstyle,
+        haircolor: girl.attributes.hairColor,
+        eyecolor: girl.attributes.eyeColor,
+        bodytype: girl.attributes.bodyType,
+        setting: girl.attributes.setting,
+      },
       source,
       generation_prompt: prompt,
     });
