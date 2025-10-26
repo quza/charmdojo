@@ -7,6 +7,7 @@ import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
 import { SuccessMeter } from './SuccessMeter';
 import { GameOverOverlay } from './GameOverOverlay';
+import { VictoryOverlay } from './VictoryOverlay';
 import { Message, GirlProfile, ChatMessageResponse } from '@/types/chat';
 import { useGame } from '@/hooks/useGame';
 
@@ -113,10 +114,6 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
       // Check game status
       if (data.gameStatus === 'won') {
         setGameStatus('won');
-        // Navigate to victory screen after a brief delay
-        setTimeout(() => {
-          router.push(`/game/victory/${roundId}`);
-        }, 1500);
       } else if (data.gameStatus === 'lost') {
         setGameStatus('lost', 'Success meter dropped too low');
       }
@@ -190,6 +187,11 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
           {/* Game Over Overlay - now reads from store */}
           {gameStatus === 'lost' && (
             <GameOverOverlay roundId={roundId} />
+          )}
+          
+          {/* Victory Overlay */}
+          {gameStatus === 'won' && (
+            <VictoryOverlay roundId={roundId} />
           )}
         </div>
       </div>
