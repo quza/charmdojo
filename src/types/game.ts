@@ -16,6 +16,7 @@ export interface Girl {
   name: string;
   imageUrl: string;
   attributes: GirlAttributes;
+  age: number; // Age generated once (19-28)
   description?: string;
   persona?: string;
 }

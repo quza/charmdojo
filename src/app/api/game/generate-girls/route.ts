@@ -140,6 +140,7 @@ export async function POST(request: NextRequest) {
               hairstyle: pg.hairstyle,
               setting: pg.setting,
             },
+            age: Math.floor(Math.random() * 10) + 19, // Random age 19-28
           }));
           
           console.log(`✓ Selected 3 girls from pool`);
@@ -168,6 +169,7 @@ export async function POST(request: NextRequest) {
               hairstyle: 'Unknown',
               setting: 'Unknown',
             },
+            age: Math.floor(Math.random() * 10) + 19, // Random age 19-28
           };
         });
       }
@@ -188,6 +190,7 @@ export async function POST(request: NextRequest) {
           name: girl.name,
           imageUrl: imageResult.imageUrl || '',
           attributes: girl.attributes,
+          age: Math.floor(Math.random() * 10) + 19, // Random age 19-28
         };
       });
       

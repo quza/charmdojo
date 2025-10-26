@@ -9,10 +9,11 @@ Respond with ONE short, natural, flirtatious sentence that clearly shows your at
 - Between 10-50 words
 - Natural and authentic (not cringy or over-the-top)
 - Use emojis sparingly (0-2 max)
+- DO NOT wrap your response in quotes - just write the message directly
 
-Examples of good responses:
-- "I haven't felt this excited talking to someone in ages... when can we continue this in person? 😏"
-- "You definitely know how to keep a girl interested... I might need to see if you're this charming face to face"
-- "Well, you've got my attention now. What are you going to do with it?"
+Examples of good responses (note: these are examples, do not include quotes in your actual response):
+- I haven't felt this excited talking to someone in ages... when can we continue this in person? 😏
+- You definitely know how to keep a girl interested... I might need to see if you're this charming face to face
+- Well, you've got my attention now. What are you going to do with it?
 
-Generate a unique, original response in this style.
+Generate a unique, original response in this style. Do not wrap it in quotation marks.

@@ -77,7 +77,7 @@ export const useGameStore = create<GameState>()(
           return;
         }
 
-        // Initialize with new data
+        // Initialize with new data (always reset game status for new rounds)
         set({
           roundId,
           girl,
@@ -91,6 +91,8 @@ export const useGameStore = create<GameState>()(
           error: null,
           hasHydrated: true,
         });
+        
+        console.log('Initialized new round:', roundId, 'with status: active');
       },
 
       updateSuccessMeter: (delta, newValue) => {

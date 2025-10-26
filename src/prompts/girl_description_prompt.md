@@ -20,6 +20,8 @@ Focus on permanent physical characteristics:
 - Focus ONLY on permanent physical characteristics
 - Do NOT include: clothing details, background, pose, or artistic style
 - Write in clear, descriptive prose
+- **IMPORTANT**: Do NOT use these words in your description: nude, naked, explicit, nsfw, porn, genitals, nipples, topless
+- Describe the person professionally and respectfully
 
 ## Output Format
 

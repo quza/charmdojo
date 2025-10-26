@@ -132,21 +132,27 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
   
   return (
     <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-4">
-      {/* Phone Frame Container */}
+      {/* Phone Frame Container - wrapper that grows with content */}
       <div className="relative w-full max-w-md">
-        {/* Gradient border frame */}
-        <div className="absolute inset-0 bg-gradient-to-br from-secondary to-accent rounded-3xl blur-sm opacity-75" />
-        
-        {/* Main phone content */}
-        <div className="relative bg-neutral-900 rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex flex-col" style={{ height: '700px' }}>
-          {/* Header */}
-          <ChatHeader girlName={girl.name} girlImageUrl={girl.imageUrl} />
+        {/* Wrapper for gradient border effect - grows with content */}
+        <div className="relative p-1">
+          {/* Gradient border frame - positioned behind content */}
+          <div className="absolute inset-0 bg-gradient-to-br from-secondary to-accent rounded-3xl blur-sm opacity-75" />
           
-          {/* Success Meter - now reads from store */}
-          <SuccessMeter />
+          {/* Main phone content - Dynamic height: fixed during gameplay, auto when won */}
+          <div className={`relative bg-neutral-900 rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex flex-col ${gameStatus === 'won' ? 'min-h-[700px] h-auto' : 'h-[700px]'}`}>
           
-          {/* Messages Container */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+          {/* Show chat interface only when game is active or lost */}
+          {gameStatus !== 'won' && (
+            <>
+              {/* Header */}
+              <ChatHeader girlName={girl.name} girlImageUrl={girl.imageUrl} />
+              
+              {/* Success Meter - now reads from store */}
+              <SuccessMeter />
+              
+              {/* Messages Container */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
             {messages.map((message) => (
               <MessageBubble
                 key={message.id}
@@ -184,15 +190,18 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
           {/* Input */}
           <MessageInput onSendMessage={handleSendMessage} disabled={isLoading || gameStatus !== 'active'} />
           
-          {/* Game Over Overlay - now reads from store */}
+          {/* Game Over Overlay */}
           {gameStatus === 'lost' && (
             <GameOverOverlay roundId={roundId} />
           )}
+          </>
+          )}
           
-          {/* Victory Overlay */}
+          {/* Victory Overlay - render as normal flow element when won */}
           {gameStatus === 'won' && (
             <VictoryOverlay roundId={roundId} />
           )}
+        </div>
         </div>
       </div>
     </div>

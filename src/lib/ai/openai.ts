@@ -173,7 +173,10 @@ export function validateDescription(description: string): boolean {
   );
 
   if (hasInappropriateContent) {
-    console.warn(`Description contains inappropriate content: matched keyword`);
+    const matchedKeyword = inappropriateKeywords.find(keyword =>
+      description.toLowerCase().includes(keyword)
+    );
+    console.warn(`Description contains inappropriate content: matched keyword "${matchedKeyword}"`);
     return false;
   }
 

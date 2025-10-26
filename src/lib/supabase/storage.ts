@@ -1,11 +1,13 @@
 /**
- * Supabase Storage utilities for managing girl images
+ * Supabase Storage utilities for managing girl images and reward assets
  */
 
 import { createClient } from './server';
 import { createClient as createBrowserClient } from '@supabase/supabase-js';
 
 const GIRL_IMAGES_BUCKET = 'girl-images';
+const REWARD_IMAGES_BUCKET = 'reward-images';
+const REWARD_AUDIO_BUCKET = 'reward-audio';
 
 /**
  * Create a service role client for use in standalone scripts/tests
@@ -128,4 +130,108 @@ export function generateImageFilename(girlName?: string): string {
     : 'girl';
   
   return `${sanitizedName}_${timestamp}_${random}.png`;
+}
+
+// =====================
+// REWARD STORAGE FUNCTIONS
+// =====================
+
+/**
+ * Upload a reward image to Supabase Storage
+ * @param buffer - Image buffer (PNG, JPEG, etc.)
+ * @param filename - Unique filename for the image
+ * @returns Public URL of the uploaded image
+ */
+export async function uploadRewardImage(
+  buffer: Buffer,
+  filename: string
+): Promise<string> {
+  const supabase = await getSupabaseClient();
+
+  console.log(`📸 Uploading reward image: ${filename}`);
+
+  // Upload the image
+  const { data, error } = await supabase.storage
+    .from(REWARD_IMAGES_BUCKET)
+    .upload(filename, buffer, {
+      contentType: 'image/png',
+      cacheControl: '3600',
+      upsert: false,
+    });
+
+  if (error) {
+    console.error('❌ Error uploading reward image to Supabase:', error);
+    throw new Error(`Failed to upload reward image: ${error.message}`);
+  }
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from(REWARD_IMAGES_BUCKET)
+    .getPublicUrl(data.path);
+
+  console.log(`✅ Reward image uploaded successfully: ${urlData.publicUrl}`);
+  return urlData.publicUrl;
+}
+
+/**
+ * Upload a reward audio file to Supabase Storage
+ * @param buffer - Audio buffer (MP3, WAV, etc.)
+ * @param filename - Unique filename for the audio
+ * @returns Public URL of the uploaded audio file
+ */
+export async function uploadRewardAudio(
+  buffer: Buffer,
+  filename: string
+): Promise<string> {
+  const supabase = await getSupabaseClient();
+
+  console.log(`🎤 Uploading reward audio: ${filename}`);
+
+  // Upload the audio file
+  const { data, error } = await supabase.storage
+    .from(REWARD_AUDIO_BUCKET)
+    .upload(filename, buffer, {
+      contentType: 'audio/mpeg',
+      cacheControl: '3600',
+      upsert: false,
+    });
+
+  if (error) {
+    console.error('❌ Error uploading reward audio to Supabase:', error);
+    throw new Error(`Failed to upload reward audio: ${error.message}`);
+  }
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from(REWARD_AUDIO_BUCKET)
+    .getPublicUrl(data.path);
+
+  console.log(`✅ Reward audio uploaded successfully: ${urlData.publicUrl}`);
+  return urlData.publicUrl;
+}
+
+/**
+ * Generate a unique filename for a reward image
+ * @param roundId - Round ID to include in filename
+ * @returns Unique filename
+ */
+export function generateRewardImageFilename(roundId: string): string {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 15);
+  const shortRoundId = roundId.substring(0, 8);
+  
+  return `reward_img_${shortRoundId}_${timestamp}_${random}.png`;
+}
+
+/**
+ * Generate a unique filename for a reward audio file
+ * @param roundId - Round ID to include in filename
+ * @returns Unique filename
+ */
+export function generateRewardAudioFilename(roundId: string): string {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 15);
+  const shortRoundId = roundId.substring(0, 8);
+  
+  return `reward_audio_${shortRoundId}_${timestamp}_${random}.mp3`;
 }

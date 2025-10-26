@@ -12,9 +12,6 @@ interface GirlCardProps {
 }
 
 export function GirlCard({ girl, isSelected, onSelect }: GirlCardProps) {
-  // Generate random age between 19 and 28
-  const age = Math.floor(Math.random() * 10) + 19;
-
   return (
     <Card
       onClick={() => onSelect(girl)}
@@ -97,7 +94,7 @@ export function GirlCard({ girl, isSelected, onSelect }: GirlCardProps) {
               {girl.name}
             </span>
             <span className="text-xl font-normal text-white/50">
-              , {age}
+              , {girl.age}
             </span>
           </h3>
         </div>
