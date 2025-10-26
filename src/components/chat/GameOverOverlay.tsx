@@ -1,21 +1,25 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useGame } from '@/hooks/useGame';
 
 interface GameOverOverlayProps {
-  finalMeter: number;
-  failReason?: string;
   roundId: string;
 }
 
-export function GameOverOverlay({ finalMeter, failReason, roundId }: GameOverOverlayProps) {
+export function GameOverOverlay({ roundId }: GameOverOverlayProps) {
   const router = useRouter();
+  
+  // Read from game store instead of props
+  const { currentMeter, failReason, resetGame } = useGame();
 
   const handleTryAgain = () => {
+    resetGame();
     router.push('/game/selection');
   };
 
   const handleMainMenu = () => {
+    resetGame();
     router.push('/main-menu');
   };
 
@@ -31,7 +35,7 @@ export function GameOverOverlay({ finalMeter, failReason, roundId }: GameOverOve
         {/* Final Meter */}
         <div className="py-4">
           <p className="text-white/60 text-sm mb-2">Final Success Meter</p>
-          <div className="text-4xl font-bold text-red-400">{Math.round(finalMeter)}%</div>
+          <div className="text-4xl font-bold text-red-400">{Math.round(currentMeter)}%</div>
         </div>
         
         {/* Fail Reason */}
@@ -68,4 +72,5 @@ export function GameOverOverlay({ finalMeter, failReason, roundId }: GameOverOve
     </div>
   );
 }
+
 

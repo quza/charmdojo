@@ -1,57 +1,54 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useGame } from '@/hooks/useGame';
 
-interface SuccessMeterProps {
-  value: number; // 0-100
-  delta?: number; // Last change amount
-  showDelta?: boolean; // Whether to show delta animation
-}
-
-export function SuccessMeter({ value, delta, showDelta = false }: SuccessMeterProps) {
+export function SuccessMeter() {
+  // Read from game store instead of props
+  const { currentMeter, lastDelta, showDelta } = useGame();
   const [displayDelta, setDisplayDelta] = useState(false);
 
   // Show delta animation when it changes
   useEffect(() => {
-    if (showDelta && delta !== undefined && delta !== 0) {
+    if (showDelta && lastDelta !== null && lastDelta !== 0) {
       setDisplayDelta(true);
       const timer = setTimeout(() => setDisplayDelta(false), 2000);
       return () => clearTimeout(timer);
     }
-  }, [delta, showDelta]);
+  }, [lastDelta, showDelta]);
 
   // Determine color based on value
   const getColor = () => {
-    if (value < 30) return 'bg-red-500';
-    if (value < 70) return 'bg-yellow-500';
+    if (currentMeter < 30) return 'bg-red-500';
+    if (currentMeter < 70) return 'bg-yellow-500';
     return 'bg-green-500';
   };
 
   const getTextColor = () => {
-    if (value < 30) return 'text-red-400';
-    if (value < 70) return 'text-yellow-400';
+    if (currentMeter < 30) return 'text-red-400';
+    if (currentMeter < 70) return 'text-yellow-400';
     return 'text-green-400';
   };
 
   const getDeltaColor = () => {
-    if (!delta) return '';
-    return delta > 0 ? 'text-green-400' : 'text-red-400';
+    if (!lastDelta) return '';
+    return lastDelta > 0 ? 'text-green-400' : 'text-red-400';
   };
 
   // Clamp value between 0 and 100
-  const clampedValue = Math.max(0, Math.min(100, value));
+  const clampedValue = Math.max(0, Math.min(100, currentMeter));
 
   return (
     <div className="w-full px-4 py-3 bg-neutral-900/95 border-b border-white/10">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-medium text-white/70">Success Meter</span>
         <div className="flex items-center gap-2">
-          {displayDelta && delta !== undefined && delta !== 0 && (
+          {displayDelta && lastDelta !== null && lastDelta !== 0 && (
             <span 
               className={`text-sm font-bold ${getDeltaColor()} animate-pulse`}
-              key={delta} // Force re-render on delta change
+              key={lastDelta} // Force re-render on delta change
             >
-              {delta > 0 ? '+' : ''}{delta}%
+              {lastDelta > 0 ? '+' : ''}{lastDelta}%
             </span>
           )}
           <span className={`text-sm font-bold ${getTextColor()}`}>
@@ -105,4 +102,5 @@ export function SuccessMeter({ value, delta, showDelta = false }: SuccessMeterPr
     </div>
   );
 }
+
 

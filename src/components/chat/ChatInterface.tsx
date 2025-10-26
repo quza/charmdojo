@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChatHeader } from './ChatHeader';
 import { MessageBubble } from './MessageBubble';
@@ -8,6 +8,7 @@ import { MessageInput } from './MessageInput';
 import { SuccessMeter } from './SuccessMeter';
 import { GameOverOverlay } from './GameOverOverlay';
 import { Message, GirlProfile, ChatMessageResponse } from '@/types/chat';
+import { useGame } from '@/hooks/useGame';
 
 interface ChatInterfaceProps {
   roundId: string;
@@ -18,15 +19,29 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: ChatInterfaceProps) {
   const router = useRouter();
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
-  const [isLoading, setIsLoading] = useState(false);
-  const [currentMeter, setCurrentMeter] = useState(initialMeter);
-  const [lastDelta, setLastDelta] = useState<number | undefined>(undefined);
-  const [showDelta, setShowDelta] = useState(false);
-  const [gameStatus, setGameStatus] = useState<'active' | 'won' | 'lost'>('active');
-  const [failReason, setFailReason] = useState<string | undefined>(undefined);
-  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Use game store instead of local state
+  const {
+    messages,
+    currentMeter,
+    gameStatus,
+    isLoading,
+    error,
+    initializeRound,
+    addOptimisticMessage,
+    removeOptimisticMessage,
+    addMessages,
+    updateSuccessMeter,
+    setGameStatus,
+    setLoading,
+    setError,
+  } = useGame();
+  
+  // Initialize round data on mount
+  useEffect(() => {
+    initializeRound(roundId, girl, initialMessages, initialMeter);
+  }, [roundId, girl, initialMessages, initialMeter, initializeRound]);
   
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -45,8 +60,8 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
       timestamp: new Date().toISOString(),
     };
     
-    setMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
+    addOptimisticMessage(userMessage);
+    setLoading(true);
     
     try {
       // Call the chat API
@@ -68,23 +83,18 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
         
         // Handle instant fail (403)
         if (response.status === 403) {
-          // Add the user message with actual ID from server if available
+          // Remove optimistic message and add actual one if available
+          removeOptimisticMessage(userMessage.id);
           if (data.userMessage) {
-            setMessages(prev => {
-              const withoutTemp = prev.filter(m => m.id !== userMessage.id);
-              return [...withoutTemp, data.userMessage];
-            });
+            addOptimisticMessage(data.userMessage);
           }
           
           // Update meter to 0
-          setCurrentMeter(0);
-          setLastDelta(data.successMeter?.delta || -currentMeter);
-          setShowDelta(true);
+          updateSuccessMeter(data.successMeter?.delta || -currentMeter, 0);
           
           // Set game status to lost
-          setGameStatus('lost');
-          setFailReason(data.failReason || 'Inappropriate content detected');
-          setIsLoading(false);
+          setGameStatus('lost', data.failReason || 'Inappropriate content detected');
+          setLoading(false);
           return;
         }
         
@@ -93,16 +103,12 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
       
       const data: ChatMessageResponse = await response.json();
       
-      // Replace temp user message with actual one from server
-      setMessages(prev => {
-        const withoutTemp = prev.filter(m => m.id !== userMessage.id);
-        return [...withoutTemp, data.userMessage, data.aiResponse];
-      });
+      // Remove optimistic message and add actual messages
+      removeOptimisticMessage(userMessage.id);
+      addMessages(data.userMessage, data.aiResponse);
       
       // Update success meter
-      setCurrentMeter(data.successMeter.current);
-      setLastDelta(data.successMeter.delta);
-      setShowDelta(true);
+      updateSuccessMeter(data.successMeter.delta, data.successMeter.current);
       
       // Check game status
       if (data.gameStatus === 'won') {
@@ -112,19 +118,18 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
           router.push(`/game/victory/${roundId}`);
         }, 1500);
       } else if (data.gameStatus === 'lost') {
-        setGameStatus('lost');
-        setFailReason('Success meter dropped too low');
+        setGameStatus('lost', 'Success meter dropped too low');
       }
       
-      setIsLoading(false);
+      setLoading(false);
       
     } catch (err: any) {
       console.error('Failed to send message:', err);
       setError(err.message || 'Failed to send message. Please try again.');
       
       // Remove the temporary user message on error
-      setMessages(prev => prev.filter(m => m.id !== userMessage.id));
-      setIsLoading(false);
+      removeOptimisticMessage(userMessage.id);
+      setLoading(false);
     }
   };
   
@@ -140,8 +145,8 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
           {/* Header */}
           <ChatHeader girlName={girl.name} girlImageUrl={girl.imageUrl} />
           
-          {/* Success Meter */}
-          <SuccessMeter value={currentMeter} delta={lastDelta} showDelta={showDelta} />
+          {/* Success Meter - now reads from store */}
+          <SuccessMeter />
           
           {/* Messages Container */}
           <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
@@ -182,13 +187,9 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
           {/* Input */}
           <MessageInput onSendMessage={handleSendMessage} disabled={isLoading || gameStatus !== 'active'} />
           
-          {/* Game Over Overlay */}
+          {/* Game Over Overlay - now reads from store */}
           {gameStatus === 'lost' && (
-            <GameOverOverlay 
-              finalMeter={currentMeter} 
-              failReason={failReason}
-              roundId={roundId}
-            />
+            <GameOverOverlay roundId={roundId} />
           )}
         </div>
       </div>
