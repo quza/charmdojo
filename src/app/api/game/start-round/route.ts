@@ -73,23 +73,47 @@ export async function POST(request: NextRequest) {
     console.log(`\n🎮 Starting round for user: ${user.email}`);
     console.log(`   Selected girl: ${girlData.name}`);
 
-    // Step 3: Generate detailed girl description using Vision API
-    console.log('📸 Generating girl description...');
-    const descriptionStartTime = Date.now();
-    
-    const { description, usedFallback } = await generateGirlDescriptionWithFallback(
-      girlData.imageUrl,
-      girlData.attributes
-    );
+    // Step 3: Check if girl has cached rewards (optimization)
+    const supabase = await createClient();
+    let description: string;
+    let usedCachedDescription = false;
 
-    const descriptionTime = (Date.now() - descriptionStartTime) / 1000;
-    console.log(`✓ Description generated in ${descriptionTime.toFixed(2)}s (${usedFallback ? 'fallback' : 'Vision API'})`);
+    // If girlId is from pool, check if rewards are already cached
+    if (girlId && !girlId.startsWith('girl_') && !girlId.startsWith('fallback_')) {
+      console.log('🔍 Checking if girl has cached rewards...');
+      const { data: cachedGirl, error: cacheError } = await supabase
+        .from('girl_profiles')
+        .select('reward_description, rewards_generated')
+        .eq('id', girlId)
+        .single();
+
+      if (!cacheError && cachedGirl?.rewards_generated && cachedGirl.reward_description) {
+        // Use cached description - no need to regenerate!
+        description = cachedGirl.reward_description;
+        usedCachedDescription = true;
+        console.log('   ✓ Using cached description (rewards already exist)');
+      }
+    }
+
+    // Step 3b: Generate description only if not cached
+    if (!usedCachedDescription) {
+      console.log('📸 Generating girl description...');
+      const descriptionStartTime = Date.now();
+      
+      const result = await generateGirlDescriptionWithFallback(
+        girlData.imageUrl,
+        girlData.attributes
+      );
+      description = result.description;
+
+      const descriptionTime = (Date.now() - descriptionStartTime) / 1000;
+      console.log(`✓ Description generated in ${descriptionTime.toFixed(2)}s (${result.usedFallback ? 'fallback' : 'Vision API'})`);
+    }
 
     // Step 4: Assign persona (default: playful for now)
     const persona = 'playful';
 
     // Step 5: Create game round in database
-    const supabase = await createClient();
     
     const { data: round, error: dbError } = await supabase
       .from('game_rounds')
@@ -99,6 +123,7 @@ export async function POST(request: NextRequest) {
         girl_image_url: girlData.imageUrl,
         girl_description: description,
         girl_persona: persona,
+        girl_profile_id: girlId, // Link to girl profile for reward caching
         initial_meter: 20,
         message_count: 0,
       })

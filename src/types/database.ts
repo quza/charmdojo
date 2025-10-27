@@ -22,6 +22,7 @@ export type Database = {
           girl_image_url: string
           girl_name: string
           girl_persona: string | null
+          girl_profile_id: string | null
           id: string
           initial_meter: number
           is_abandoned: boolean
@@ -37,6 +38,7 @@ export type Database = {
           girl_image_url: string
           girl_name: string
           girl_persona?: string | null
+          girl_profile_id?: string | null
           id?: string
           initial_meter?: number
           is_abandoned?: boolean
@@ -52,6 +54,7 @@ export type Database = {
           girl_image_url?: string
           girl_name?: string
           girl_persona?: string | null
+          girl_profile_id?: string | null
           id?: string
           initial_meter?: number
           is_abandoned?: boolean
@@ -68,7 +71,80 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "game_rounds_girl_profile_id_fkey"
+            columns: ["girl_profile_id"]
+            isOneToOne: false
+            referencedRelation: "girl_profiles"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      girl_profiles: {
+        Row: {
+          bodytype: string
+          created_at: string
+          ethnicity: string
+          eyecolor: string
+          generation_prompt: string | null
+          haircolor: string
+          hairstyle: string
+          id: string
+          image_url: string
+          last_used_at: string | null
+          name: string
+          reward_description: string | null
+          reward_image_url: string | null
+          reward_text: string | null
+          reward_voice_url: string | null
+          rewards_generated: boolean
+          setting: string
+          source: string
+          use_count: number
+        }
+        Insert: {
+          bodytype: string
+          created_at?: string
+          ethnicity: string
+          eyecolor: string
+          generation_prompt?: string | null
+          haircolor: string
+          hairstyle: string
+          id?: string
+          image_url: string
+          last_used_at?: string | null
+          name: string
+          reward_description?: string | null
+          reward_image_url?: string | null
+          reward_text?: string | null
+          reward_voice_url?: string | null
+          rewards_generated?: boolean
+          setting: string
+          source: string
+          use_count?: number
+        }
+        Update: {
+          bodytype?: string
+          created_at?: string
+          ethnicity?: string
+          eyecolor?: string
+          generation_prompt?: string | null
+          haircolor?: string
+          hairstyle?: string
+          id?: string
+          image_url?: string
+          last_used_at?: string | null
+          name?: string
+          reward_description?: string | null
+          reward_image_url?: string | null
+          reward_text?: string | null
+          reward_voice_url?: string | null
+          rewards_generated?: boolean
+          setting?: string
+          source?: string
+          use_count?: number
+        }
+        Relationships: []
       }
       messages: {
         Row: {

@@ -113,13 +113,14 @@ export async function POST(request: NextRequest) {
 
     // Step 3: Check pool size (use Supabase MCP)
     const poolSize = await getPoolSize();
-    console.log(`📊 Current pool size: ${poolSize}/2000`);
+    const POOL_THRESHOLD = 1000; // Switch to pool mode at 1000 girls
+    console.log(`📊 Current pool size: ${poolSize}/${POOL_THRESHOLD}`);
     
     let girls: Girl[];
     
-    if (poolSize >= 2000) {
-      // POOL MODE: Select 3 random girls from pool
-      console.log('✓ Pool at capacity, selecting from existing profiles');
+    if (poolSize >= POOL_THRESHOLD) {
+      // POOL MODE: Select 3 random girls from pool (cached rewards)
+      console.log('✓ Pool at capacity, selecting from existing profiles with cached rewards');
       
       try {
         const poolGirls = await getRandomGirlsFromPool(3);
@@ -175,7 +176,7 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // GENERATION MODE: Generate new girls and add to pool
-      console.log(`✓ Pool building mode (${2000 - poolSize} remaining)`);
+      console.log(`✓ Pool building mode (${POOL_THRESHOLD - poolSize} remaining to reach threshold)`);
       
       const generatedGirls = generateGirlProfiles(3);
       const imageResults = await Promise.all(

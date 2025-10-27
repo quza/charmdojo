@@ -15,7 +15,7 @@ import {
   generateRewardAudioFilename,
 } from '@/lib/supabase/storage';
 import { RewardGenerationResult } from '@/types/reward';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 
 // Lazy initialization of OpenAI client
 let openaiClient: OpenAI | null = null;
@@ -282,6 +282,119 @@ async function generateRewardImage(
 }
 
 /**
+ * Check if a girl profile has cached rewards
+ * 
+ * @param girlProfileId - UUID of the girl profile
+ * @returns Cached rewards if available, null otherwise
+ */
+async function checkCachedRewards(
+  girlProfileId: string
+): Promise<RewardGenerationResult | null> {
+  console.log(`🔍 Checking for cached rewards for girl profile ${girlProfileId}...`);
+  
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from('girl_profiles')
+    .select('reward_text, reward_voice_url, reward_image_url, reward_description, rewards_generated')
+    .eq('id', girlProfileId)
+    .single();
+
+  if (error) {
+    console.error('   Error checking cached rewards:', error);
+    return null;
+  }
+
+  if (!data?.rewards_generated || !data.reward_text) {
+    console.log('   No cached rewards found');
+    return null;
+  }
+
+  console.log('   ✓ Found cached rewards!');
+  console.log(`      Text: ${data.reward_text.substring(0, 50)}...`);
+  console.log(`      Voice: ${data.reward_voice_url ? 'available' : 'not available'}`);
+  console.log(`      Image: ${data.reward_image_url ? 'available' : 'not available'}`);
+
+  return {
+    rewardText: data.reward_text,
+    rewardVoiceUrl: data.reward_voice_url,
+    rewardImageUrl: data.reward_image_url,
+    generationTime: 0, // Cached, no generation time
+    breakdown: {
+      textGeneration: 0,
+      voiceGeneration: 0,
+      imageGeneration: 0,
+    },
+  };
+}
+
+/**
+ * Cache generated rewards to girl profile for future reuse
+ * 
+ * @param girlProfileId - UUID of the girl profile
+ * @param rewards - Generated reward data to cache
+ */
+async function cacheRewardsToProfile(
+  girlProfileId: string,
+  rewards: {
+    reward_text: string;
+    reward_voice_url: string | null;
+    reward_image_url: string | null;
+    reward_description: string;
+  }
+): Promise<void> {
+  console.log(`💾 Caching rewards to girl profile ${girlProfileId}...`);
+  
+  const supabase = createServiceRoleClient();
+  const { error } = await supabase
+    .from('girl_profiles')
+    .update({
+      reward_text: rewards.reward_text,
+      reward_voice_url: rewards.reward_voice_url,
+      reward_image_url: rewards.reward_image_url,
+      reward_description: rewards.reward_description,
+      rewards_generated: true,
+    })
+    .eq('id', girlProfileId);
+
+  if (error) {
+    console.error('   ❌ Error caching rewards:', error);
+    throw new Error(`Failed to cache rewards: ${error.message}`);
+  }
+
+  console.log('   ✓ Rewards cached successfully');
+}
+
+/**
+ * Save reward data to rewards table for historical tracking
+ * 
+ * @param roundId - UUID of the game round
+ * @param rewardData - Reward data to save
+ */
+async function saveRewardToHistory(
+  roundId: string,
+  rewardData: RewardGenerationResult
+): Promise<void> {
+  console.log(`📝 Saving reward to history for round ${roundId}...`);
+  
+  const supabase = createServiceRoleClient();
+  const { error } = await supabase.from('rewards').insert({
+    round_id: roundId,
+    reward_text: rewardData.rewardText,
+    reward_voice_url: rewardData.rewardVoiceUrl,
+    reward_image_url: rewardData.rewardImageUrl,
+    generation_time: rewardData.generationTime,
+  });
+
+  if (error) {
+    console.error('   ❌ Error saving reward to history:', error);
+    // Don't throw error here, as this is not critical
+    // The reward generation itself succeeded
+  } else {
+    console.log('   ✓ Reward saved to history');
+  }
+}
+
+/**
  * Generate complete reward (text, voice, image) in parallel
  * Main orchestrator function that coordinates all three asset generations
  * 
@@ -296,11 +409,11 @@ export async function generateCompleteReward(
   console.log(`🎁 Starting complete reward generation for round ${roundId}`);
   console.log(`================================================`);
 
-  // Fetch round data from database
+  // Fetch round data from database (including girl_profile_id for caching)
   const supabase = await createClient();
   const { data: round, error: roundError } = await supabase
     .from('game_rounds')
-    .select('girl_name, girl_description, girl_persona')
+    .select('girl_name, girl_description, girl_persona, girl_profile_id')
     .eq('id', roundId)
     .single();
 
@@ -308,11 +421,29 @@ export async function generateCompleteReward(
     throw new Error(`Failed to fetch round data: ${roundError?.message || 'Round not found'}`);
   }
 
-  const { girl_name, girl_description, girl_persona } = round;
+  const { girl_name, girl_description, girl_persona, girl_profile_id } = round;
 
   if (!girl_description) {
     throw new Error('Girl description is required for reward generation');
   }
+
+  // Check for cached rewards if round is linked to a girl profile
+  if (girl_profile_id) {
+    const cachedRewards = await checkCachedRewards(girl_profile_id);
+    if (cachedRewards) {
+      console.log('   🚀 Using cached rewards (fast path)');
+      // Still save to rewards table for historical tracking
+      await saveRewardToHistory(roundId, cachedRewards);
+      
+      const totalTime = (Date.now() - overallStartTime) / 1000;
+      console.log(`\n================================================`);
+      console.log(`✅ Cached rewards returned in ${totalTime.toFixed(2)}s`);
+      
+      return cachedRewards;
+    }
+  }
+
+  console.log('   🔨 Generating new rewards (no cache available)');
 
   // Track timing for each asset
   const timings = {
@@ -348,14 +479,7 @@ export async function generateCompleteReward(
 
   const totalTime = (Date.now() - overallStartTime) / 1000;
 
-  console.log(`\n================================================`);
-  console.log(`✅ Complete reward generation finished`);
-  console.log(`   Total time: ${totalTime.toFixed(2)}s`);
-  console.log(`   Text: ${timings.text.toFixed(2)}s`);
-  console.log(`   Voice: ${timings.voice.toFixed(2)}s (${rewardVoiceUrl ? 'success' : 'failed'})`);
-  console.log(`   Image: ${timings.image.toFixed(2)}s (${rewardImageUrl ? 'success' : 'failed'})`);
-
-  return {
+  const rewardResult: RewardGenerationResult = {
     rewardText,
     rewardVoiceUrl,
     rewardImageUrl,
@@ -366,6 +490,33 @@ export async function generateCompleteReward(
       imageGeneration: timings.image,
     },
   };
+
+  console.log(`\n================================================`);
+  console.log(`✅ Complete reward generation finished`);
+  console.log(`   Total time: ${totalTime.toFixed(2)}s`);
+  console.log(`   Text: ${timings.text.toFixed(2)}s`);
+  console.log(`   Voice: ${timings.voice.toFixed(2)}s (${rewardVoiceUrl ? 'success' : 'failed'})`);
+  console.log(`   Image: ${timings.image.toFixed(2)}s (${rewardImageUrl ? 'success' : 'failed'})`);
+
+  // Cache rewards to girl profile if linked (for future reuse)
+  if (girl_profile_id) {
+    try {
+      await cacheRewardsToProfile(girl_profile_id, {
+        reward_text: rewardText,
+        reward_voice_url: rewardVoiceUrl,
+        reward_image_url: rewardImageUrl,
+        reward_description: girl_description,
+      });
+    } catch (cacheError: any) {
+      console.error('   ⚠️  Failed to cache rewards (non-critical):', cacheError.message);
+      // Don't fail the entire operation if caching fails
+    }
+  }
+
+  // Save to rewards table for historical tracking
+  await saveRewardToHistory(roundId, rewardResult);
+
+  return rewardResult;
 }
 
 

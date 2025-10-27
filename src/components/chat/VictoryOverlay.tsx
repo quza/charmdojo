@@ -3,6 +3,9 @@
 import { useRouter } from 'next/navigation';
 import { useGame } from '@/hooks/useGame';
 import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import Confetti from 'react-confetti';
+import { useWindowSize } from '@/hooks/useWindowSize';
 
 interface VictoryOverlayProps {
   roundId: string;
@@ -28,6 +31,11 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
+  
+  // Confetti state
+  const [showConfetti, setShowConfetti] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
+  const { width, height } = useWindowSize();
   
   // Use ref to prevent duplicate API calls (React Strict Mode workaround)
   const hasRequestedReward = useRef(false);
@@ -100,6 +108,17 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
     fetchReward();
   }, [roundId]);
 
+  // Set mounted state (for portal)
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Stop confetti after 5 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => setShowConfetti(false), 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleContinueMatching = () => {
     resetGame();
     router.push('/game/selection');
@@ -127,8 +146,24 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
   };
 
   return (
-    <div className="relative bg-black/80 backdrop-blur-sm flex items-center justify-center min-h-[700px] p-4">
-      <div className="bg-neutral-900 border-2 border-primary/50 rounded-3xl p-8 w-full text-center space-y-4 animate-in fade-in zoom-in duration-300 my-4">
+    <>
+      {/* Confetti Animation - Rendered via Portal to document.body */}
+      {isMounted && showConfetti && createPortal(
+        <div className="fixed inset-0 z-[9999] pointer-events-none">
+          <Confetti
+            width={width}
+            height={height}
+            numberOfPieces={200}
+            recycle={false}
+            colors={['#FF69B4', '#FFB6C1', '#FF1493', '#C71585', '#FFE4E1']}
+            gravity={0.3}
+          />
+        </div>,
+        document.body
+      )}
+      
+      <div className="relative bg-black/80 backdrop-blur-sm flex items-center justify-center min-h-[700px] p-4">
+        <div className="bg-neutral-900 border-2 border-primary/50 rounded-3xl p-8 w-full text-center space-y-4 animate-in fade-in zoom-in duration-300 my-4">
         {/* Victory Icon */}
         <div className="text-6xl mb-2">🎉</div>
         
@@ -268,7 +303,8 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
