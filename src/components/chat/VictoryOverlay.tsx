@@ -2,10 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 import { useGame } from '@/hooks/useGame';
+import { useUser } from '@/hooks/useUser';
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Confetti from 'react-confetti';
 import { useWindowSize } from '@/hooks/useWindowSize';
+import { createClient } from '@/lib/supabase/client';
 
 interface VictoryOverlayProps {
   roundId: string;
@@ -21,8 +23,9 @@ interface RewardData {
 export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
   const router = useRouter();
   
-  // Read from game store
+  // Read from game store and user context
   const { girl, resetGame } = useGame();
+  const { user } = useUser();
   
   // Reward state
   const [reward, setReward] = useState<RewardData | null>(null);
@@ -33,6 +36,10 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
   const [imageError, setImageError] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
   
+  // User preference for displaying rewards
+  const [displayRewards, setDisplayRewards] = useState(true);
+  const [loadingPreference, setLoadingPreference] = useState(true);
+  
   // Confetti state
   const [showConfetti, setShowConfetti] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
@@ -40,6 +47,40 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
   
   // Use ref to prevent duplicate API calls (React Strict Mode workaround)
   const hasRequestedReward = useRef(false);
+
+  // Fetch user's display_rewards preference
+  useEffect(() => {
+    async function fetchDisplayRewardsPreference() {
+      if (!user) {
+        setLoadingPreference(false);
+        return;
+      }
+
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('users')
+          .select('display_rewards')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching display_rewards preference:', error);
+          // Default to true on error
+          setDisplayRewards(true);
+        } else if (data) {
+          setDisplayRewards(data.display_rewards ?? true);
+        }
+      } catch (error) {
+        console.error('Error fetching preference:', error);
+        setDisplayRewards(true);
+      } finally {
+        setLoadingPreference(false);
+      }
+    }
+
+    fetchDisplayRewardsPreference();
+  }, [user]);
 
   // Fetch reward on mount
   useEffect(() => {
@@ -130,6 +171,12 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
             
             // Check if this is the "round not won" error (status 403)
             if (response.status === 403 && errorData.error === 'round_not_won') {
+              // If shouldRetry is explicitly false, this round is lost - don't retry
+              if (errorData.shouldRetry === false) {
+                console.error(`❌ Round is lost (result: ${errorData.roundResult}) - stopping retry attempts`);
+                throw new Error('This round was lost. Rewards are only generated for won rounds.');
+              }
+              
               console.warn(`⚠️ Round not marked as won yet (attempt ${retryCount + 1}/${maxRetries})`);
               lastError = new Error(errorMessage);
               retryCount++;
@@ -260,95 +307,147 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
         <p className="text-white/70 text-sm">
           Congratulations! You successfully charmed her.
         </p>
-        
-        {/* Girl Image with Gradient Border */}
-        <div className="py-4">
-          <div className="relative inline-block">
-            {/* Gradient border effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-secondary to-accent rounded-xl blur-sm opacity-75" />
-            
-            {/* Reward image or loading placeholder - maintains aspect ratio */}
-            <div className="relative mx-auto" style={{ maxWidth: '280px', maxHeight: '400px' }}>
-              {isLoadingReward ? (
-                <div className="w-48 h-48 bg-neutral-800 rounded-xl border-2 border-primary/30 flex flex-col items-center justify-center gap-2 mx-auto">
-                  <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-                  <p className="text-xs text-white/40">{loadingMessage}</p>
-                </div>
-              ) : imageError || !reward?.rewardImageUrl ? (
-                <div className="w-48 h-48 bg-neutral-800 rounded-xl border-2 border-primary/30 flex items-center justify-center overflow-hidden mx-auto">
-                  <img 
-                    src={girl?.imageUrl} 
-                    alt={girl?.name || "Girl"} 
-                    className="w-full h-full object-cover opacity-50"
-                  />
-                </div>
-              ) : (
-                <img 
-                  src={reward.rewardImageUrl} 
-                  alt={`${girl?.name || "Girl"} - Reward`} 
-                  className="w-full h-auto max-h-96 object-contain rounded-xl border-2 border-primary/30 cursor-pointer hover:opacity-90 transition-opacity"
-                  style={{ maxWidth: '280px' }}
-                  onClick={() => setShowFullImage(true)}
-                  onError={(e) => {
-                    console.error('Failed to load reward image:', reward.rewardImageUrl);
-                    setImageError(true);
-                  }}
-                  onLoad={() => {
-                    console.log('✅ Reward image loaded successfully');
-                  }}
-                />
-              )}
+
+        {/* Check if rewards should be displayed */}
+        {loadingPreference ? (
+          <div className="py-8">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+            <p className="text-xs text-white/40 mt-2">Loading preferences...</p>
+          </div>
+        ) : !displayRewards ? (
+          /* Rewards Hidden - Show simplified message */
+          <div className="py-8 space-y-4">
+            <div className="bg-neutral-800/50 border border-primary/20 rounded-lg p-6">
+              <p className="text-white/80 mb-2">
+                🎁 Rewards are hidden per your settings
+              </p>
+              <p className="text-sm text-white/60">
+                Your rewards have been generated and saved, but are not displayed.
+              </p>
+              <button
+                onClick={() => router.push('/settings')}
+                className="mt-4 text-sm text-primary hover:text-primary/80 underline"
+              >
+                Change this in Settings
+              </button>
             </div>
           </div>
-        </div>
-        
-        {/* Reward Text - Dynamic from API */}
-        <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 min-h-[4rem] flex flex-col items-center justify-center gap-2">
-          {isLoadingReward ? (
-            <div className="flex items-center gap-2 text-white/60 text-sm">
-              <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
-              {loadingMessage}
-            </div>
-          ) : rewardError ? (
-            <div className="text-center">
-              <p className="text-sm text-red-400/80 italic mb-1">
-                Unable to load reward text
-              </p>
-              <p className="text-xs text-white/40">
-                Error: {rewardError}
-              </p>
-            </div>
-          ) : reward ? (
-            <>
-              <p className="text-sm text-white/80 italic text-center leading-relaxed">
-                {reward.rewardText.startsWith('"') ? reward.rewardText : `"${reward.rewardText}"`}
-              </p>
-              {reward.rewardVoiceUrl && (
-                <button
-                  onClick={handlePlayAudio}
-                  disabled={isPlayingAudio}
-                  className="mt-2 px-4 py-1.5 bg-primary/20 hover:bg-primary/30 text-primary text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-                >
-                  {isPlayingAudio ? (
-                    <>
-                      <span className="text-base">🔊</span>
-                      Playing...
-                    </>
+        ) : (
+          /* Rewards Enabled - Show full rewards */
+          <>
+            {/* Girl Image with Gradient Border */}
+            <div className="py-4">
+              <div className="relative inline-block">
+                {/* Gradient border effect */}
+                <div className="absolute inset-0 bg-gradient-to-br from-secondary to-accent rounded-xl blur-sm opacity-75" />
+                
+                {/* Reward image or loading placeholder - maintains aspect ratio */}
+                <div className="relative mx-auto" style={{ maxWidth: '280px', maxHeight: '400px' }}>
+                  {isLoadingReward ? (
+                    <div className="w-48 h-48 bg-neutral-800 rounded-xl border-2 border-primary/30 flex flex-col items-center justify-center gap-2 mx-auto">
+                      <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                      <p className="text-xs text-white/40">{loadingMessage}</p>
+                    </div>
+                  ) : imageError || !reward?.rewardImageUrl ? (
+                    <div className="w-48 h-48 bg-neutral-800 rounded-xl border-2 border-primary/30 flex items-center justify-center overflow-hidden mx-auto">
+                      <img 
+                        src={girl?.imageUrl} 
+                        alt={girl?.name || "Girl"} 
+                        className="w-full h-full object-cover opacity-50"
+                      />
+                    </div>
                   ) : (
-                    <>
-                      <span className="text-base">🎵</span>
-                      Play Voice
-                    </>
+                    <img 
+                      src={reward.rewardImageUrl} 
+                      alt={`${girl?.name || "Girl"} - Reward`} 
+                      className="w-full h-auto max-h-96 object-contain rounded-xl border-2 border-primary/30 cursor-pointer hover:opacity-90 transition-opacity"
+                      style={{ maxWidth: '280px' }}
+                      onClick={() => setShowFullImage(true)}
+                      onError={(e) => {
+                        console.error('Failed to load reward image:', reward.rewardImageUrl);
+                        setImageError(true);
+                      }}
+                      onLoad={() => {
+                        console.log('✅ Reward image loaded successfully');
+                      }}
+                    />
                   )}
-                </button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Reward Text - Dynamic from API */}
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 min-h-[4rem] flex flex-col items-center justify-center gap-2">
+              {isLoadingReward ? (
+                <div className="flex items-center gap-2 text-white/60 text-sm">
+                  <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                  {loadingMessage}
+                </div>
+              ) : rewardError ? (
+                <div className="text-center">
+                  <p className="text-sm text-red-400/80 italic mb-1">
+                    Unable to load reward text
+                  </p>
+                  <p className="text-xs text-white/40">
+                    Error: {rewardError}
+                  </p>
+                </div>
+              ) : reward ? (
+                <>
+                  <p className="text-sm text-white/80 italic text-center leading-relaxed">
+                    {reward.rewardText.startsWith('"') ? reward.rewardText : `"${reward.rewardText}"`}
+                  </p>
+                  {reward.rewardVoiceUrl && (
+                    <button
+                      onClick={handlePlayAudio}
+                      disabled={isPlayingAudio}
+                      className="mt-2 px-4 py-1.5 bg-primary/20 hover:bg-primary/30 text-primary text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    >
+                      {isPlayingAudio ? (
+                        <>
+                          <span className="text-base">🔊</span>
+                          Playing...
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-base">🎵</span>
+                          Play Voice
+                        </>
+                      )}
+                    </button>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-white/60 italic">
+                  Reward not available
+                </p>
               )}
-            </>
-          ) : (
-            <p className="text-sm text-white/60 italic">
-              Reward not available
-            </p>
-          )}
-        </div>
+            </div>
+
+            {/* Full-size Image Modal */}
+            {showFullImage && reward?.rewardImageUrl && (
+              <div 
+                className="absolute inset-0 bg-black/95 flex items-center justify-center z-50 p-4 cursor-pointer"
+                onClick={() => setShowFullImage(false)}
+              >
+                <div className="relative max-w-full max-h-full">
+                  <img 
+                    src={reward.rewardImageUrl} 
+                    alt={`${girl?.name || "Girl"} - Full Size`}
+                    className="max-w-full max-h-full object-contain rounded-lg"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowFullImage(false);
+                    }}
+                  />
+                  <div className="absolute top-4 right-4 text-white/60 text-sm bg-black/50 px-3 py-1 rounded-full">
+                    Click to close
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
         
         {/* Action Buttons */}
         <div className="flex flex-col gap-3 pt-4">
@@ -365,29 +464,6 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
             Main Menu
           </button>
         </div>
-        
-        {/* Full-size Image Modal */}
-        {showFullImage && reward?.rewardImageUrl && (
-          <div 
-            className="absolute inset-0 bg-black/95 flex items-center justify-center z-50 p-4 cursor-pointer"
-            onClick={() => setShowFullImage(false)}
-          >
-            <div className="relative max-w-full max-h-full">
-              <img 
-                src={reward.rewardImageUrl} 
-                alt={`${girl?.name || "Girl"} - Full Size`}
-                className="max-w-full max-h-full object-contain rounded-lg"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowFullImage(false);
-                }}
-              />
-              <div className="absolute top-4 right-4 text-white/60 text-sm bg-black/50 px-3 py-1 rounded-full">
-                Click to close
-              </div>
-            </div>
-          </div>
-        )}
       </div>
       </div>
     </>

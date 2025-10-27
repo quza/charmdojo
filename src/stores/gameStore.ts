@@ -66,6 +66,13 @@ export const useGameStore = create<GameState>()(
       initializeRound: (roundId, girl, initialMessages, initialMeter) => {
         const state = get();
 
+        // CRITICAL: If this is a different round, immediately reset gameStatus
+        // to prevent VictoryOverlay from rendering with persisted 'won' status
+        if (state.roundId !== roundId && state.gameStatus === 'won') {
+          console.log('🔄 Detected round change - resetting game status from won to active');
+          set({ gameStatus: 'active', failReason: null });
+        }
+
         // Check if we already have data for this round and it's recent
         if (
           state.hasHydrated &&

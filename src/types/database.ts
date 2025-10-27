@@ -290,6 +290,7 @@ export type Database = {
           best_streak: number
           created_at: string
           current_streak: number
+          display_rewards: boolean
           email: string
           id: string
           name: string | null
@@ -303,6 +304,7 @@ export type Database = {
           best_streak?: number
           created_at?: string
           current_streak?: number
+          display_rewards?: boolean
           email: string
           id: string
           name?: string | null
@@ -316,6 +318,7 @@ export type Database = {
           best_streak?: number
           created_at?: string
           current_streak?: number
+          display_rewards?: boolean
           email?: string
           id?: string
           name?: string | null
