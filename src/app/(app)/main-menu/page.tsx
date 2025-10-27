@@ -8,7 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ActionCard } from '@/components/game/ActionCard';
 import { StatsCard } from '@/components/game/StatsCard';
+import { AchievementCard } from '@/components/game/AchievementCard';
+import { showAchievementToasts } from '@/components/game/AchievementToast';
 import { useEffect, useState, useCallback } from 'react';
+import { Achievement } from '@/types/achievement';
 
 interface UserStats {
   totalRounds: number;
@@ -33,6 +36,8 @@ export default function MainMenuPage() {
     totalAchievements: 0,
   });
   const [statsLoading, setStatsLoading] = useState(true);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [achievementsLoading, setAchievementsLoading] = useState(true);
   const [fadeIn, setFadeIn] = useState(false);
 
   // Fetch stats function (defined outside useEffect so it can be called multiple times)
@@ -57,22 +62,53 @@ export default function MainMenuPage() {
     }
   }, []);
 
+  // Fetch achievements function
+  const fetchAchievements = useCallback(async () => {
+    setAchievementsLoading(true);
+    try {
+      const response = await fetch('/api/user/achievements', {
+        cache: 'no-store',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch achievements');
+      }
+      
+      const data = await response.json();
+      setAchievements(data.achievements);
+      
+      // Show toasts for newly unlocked achievements
+      if (data.newlyUnlocked && data.newlyUnlocked.length > 0) {
+        const newlyUnlockedAchievements = data.achievements.filter((a: Achievement) =>
+          data.newlyUnlocked.includes(a.key)
+        );
+        showAchievementToasts(newlyUnlockedAchievements);
+      }
+    } catch (error) {
+      console.error('Error fetching achievements:', error);
+    } finally {
+      setAchievementsLoading(false);
+    }
+  }, []);
+
   // Effect: Initial load and fade-in animation
   useEffect(() => {
     setFadeIn(true);
 
     if (user) {
       fetchStats();
+      fetchAchievements();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); // fetchStats is stable (useCallback with empty deps), safe to omit
+  }, [user]); // fetchStats and fetchAchievements are stable (useCallback with empty deps), safe to omit
 
-  // Effect: Refetch stats when page becomes visible (user returns from game)
+  // Effect: Refetch stats and achievements when page becomes visible (user returns from game)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && user) {
-        console.log('Page visible, refetching stats...');
+        console.log('Page visible, refetching stats and achievements...');
         fetchStats();
+        fetchAchievements();
       }
     };
 
@@ -81,8 +117,9 @@ export default function MainMenuPage() {
     // Also refetch when window regains focus
     const handleFocus = () => {
       if (user) {
-        console.log('Window focused, refetching stats...');
+        console.log('Window focused, refetching stats and achievements...');
         fetchStats();
+        fetchAchievements();
       }
     };
 
@@ -93,7 +130,7 @@ export default function MainMenuPage() {
       window.removeEventListener('focus', handleFocus);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); // fetchStats is stable (useCallback with empty deps), safe to omit
+  }, [user]); // fetchStats and fetchAchievements are stable (useCallback with empty deps), safe to omit
 
   const handleSignOut = async () => {
     await signOut();
@@ -231,6 +268,35 @@ export default function MainMenuPage() {
                 />
                 <StatsCard label="Current Winstreak" value={stats.currentStreak} />
                 <StatsCard label="Total Achievements" value={stats.totalAchievements} />
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Achievements Section */}
+        <div className="space-y-6">
+          <h2 className="text-center text-2xl font-bold text-[#e15f6e]">Your Achievements</h2>
+          <div className="grid gap-6 md:grid-cols-3">
+            {achievementsLoading ? (
+              <>
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-40 animate-pulse rounded-xl bg-gradient-to-br from-[#04060c] to-[#0a0d1a]"
+                  />
+                ))}
+              </>
+            ) : (
+              <>
+                {achievements.map((achievement) => (
+                  <AchievementCard
+                    key={achievement.id}
+                    title={achievement.title}
+                    description={achievement.description}
+                    iconUrl={achievement.iconUrl}
+                    unlocked={achievement.unlocked}
+                  />
+                ))}
               </>
             )}
           </div>

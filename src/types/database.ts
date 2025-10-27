@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          created_at: string
+          description: string
+          display_order: number
+          icon_url: string
+          id: string
+          key: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          display_order: number
+          icon_url: string
+          id?: string
+          key: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          display_order?: number
+          icon_url?: string
+          id?: string
+          key?: string
+          title?: string
+        }
+        Relationships: []
+      }
       game_rounds: {
         Row: {
           completed_at: string | null
@@ -65,17 +95,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "game_rounds_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "game_rounds_girl_profile_id_fkey"
             columns: ["girl_profile_id"]
             isOneToOne: false
             referencedRelation: "girl_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_rounds_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -284,6 +314,45 @@ export type Database = {
           },
         ]
       }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          created_at: string
+          id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          created_at?: string
+          id?: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          created_at?: string
+          id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_achievements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar_url: string | null
@@ -294,6 +363,7 @@ export type Database = {
           email: string
           id: string
           name: string | null
+          total_achievements: number
           total_losses: number
           total_rounds: number
           total_wins: number
@@ -308,6 +378,7 @@ export type Database = {
           email: string
           id: string
           name?: string | null
+          total_achievements?: number
           total_losses?: number
           total_rounds?: number
           total_wins?: number
@@ -322,6 +393,7 @@ export type Database = {
           email?: string
           id?: string
           name?: string | null
+          total_achievements?: number
           total_losses?: number
           total_rounds?: number
           total_wins?: number
@@ -334,6 +406,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_girl_pool_size: { Args: Record<string, never>; Returns: number }
+      get_random_girls: {
+        Args: { count?: number }
+        Returns: {
+          bodytype: string
+          created_at: string
+          ethnicity: string
+          eyecolor: string
+          generation_prompt: string | null
+          haircolor: string
+          hairstyle: string
+          id: string
+          image_url: string
+          last_used_at: string | null
+          name: string
+          reward_description: string | null
+          reward_image_url: string | null
+          reward_text: string | null
+          reward_voice_url: string | null
+          rewards_generated: boolean
+          setting: string
+          source: string
+          use_count: number
+        }[]
+      }
       get_user_stats: {
         Args: { user_uuid: string }
         Returns: {
@@ -344,30 +441,6 @@ export type Database = {
           total_rounds: number
           win_rate: number
           wins: number
-        }[]
-      }
-      get_girl_pool_size: {
-        Args: Record<string, never>
-        Returns: number
-      }
-      get_random_girls: {
-        Args: { count: number }
-        Returns: {
-          id: string
-          name: string
-          image_url: string
-          ethnicity: string
-          hairstyle: string
-          haircolor: string
-          eyecolor: string
-          bodytype: string
-          setting: string
-          source: string
-          generation_prompt: string | null
-          use_count: number
-          last_used_at: string | null
-          created_at: string
-          rewards_generated: boolean
         }[]
       }
     }

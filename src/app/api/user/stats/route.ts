@@ -43,7 +43,17 @@ export async function GET(request: NextRequest) {
     const totalGames = (userData.total_wins || 0) + (userData.total_losses || 0);
     const winRate = totalGames > 0 ? ((userData.total_wins || 0) / totalGames) * 100 : 0;
 
-    // 4. Format and return statistics
+    // 4. Get total achievements count
+    const { count: achievementCount, error: achievementError } = await supabase
+      .from('user_achievements')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+
+    if (achievementError) {
+      console.error('Error fetching achievement count:', achievementError);
+    }
+
+    // 5. Format and return statistics
     const stats: UserStats = {
       totalRounds: userData.total_rounds || 0,
       wins: userData.total_wins || 0,
@@ -51,7 +61,7 @@ export async function GET(request: NextRequest) {
       winRate: Math.round(winRate * 10) / 10, // Round to 1 decimal place
       currentStreak: userData.current_streak || 0,
       bestStreak: userData.best_streak || 0,
-      totalAchievements: 0, // Placeholder until achievements are implemented
+      totalAchievements: achievementCount || 0,
     };
 
     return NextResponse.json(stats);

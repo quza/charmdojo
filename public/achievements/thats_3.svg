@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b35;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f22a5a;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="90" fill="url(#grad2)" opacity="0.2"/>
+  
+  <!-- Flames -->
+  <g transform="translate(100, 100)">
+    <!-- Center flame -->
+    <path d="M 0 -50 Q -15 -35 -10 -20 Q -5 -5 0 10 Q 5 -5 10 -20 Q 15 -35 0 -50 Z" 
+          fill="url(#grad2)" stroke="#ff6b35" stroke-width="2"/>
+    
+    <!-- Left flame -->
+    <path d="M -25 -35 Q -35 -25 -30 -15 Q -25 -5 -20 5 Q -15 -5 -10 -15 Q -5 -25 -25 -35 Z" 
+          fill="url(#grad2)" opacity="0.8"/>
+    
+    <!-- Right flame -->
+    <path d="M 25 -35 Q 35 -25 30 -15 Q 25 -5 20 5 Q 15 -5 10 -15 Q 5 -25 25 -35 Z" 
+          fill="url(#grad2)" opacity="0.8"/>
+    
+    <!-- Number 3 -->
+    <g transform="translate(0, 30)">
+      <text x="0" y="20" font-family="Arial, sans-serif" font-size="60" font-weight="bold" 
+            fill="#ffd700" text-anchor="middle">3</text>
+    </g>
+  </g>
+</svg>

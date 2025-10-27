@@ -441,6 +441,18 @@ export async function POST(request: NextRequest) {
         console.error('Error updating user stats:', error);
         // Don't throw - this shouldn't break the game flow
       }
+
+      // STEP 5.6: Check and unlock achievements
+      try {
+        const { checkAndUnlockAchievements } = await import('@/lib/services/achievement-service');
+        const newlyUnlocked = await checkAndUnlockAchievements(user.id);
+        if (newlyUnlocked.length > 0) {
+          console.log(`🏆 Achievements unlocked: ${newlyUnlocked.join(', ')}`);
+        }
+      } catch (error) {
+        console.error('Error checking achievements:', error);
+        // Don't throw - this shouldn't break the game flow
+      }
     }
 
     // STEP 6: Build and return response
