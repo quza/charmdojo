@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     // 2. Fetch user statistics from users table
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('total_rounds, total_wins, total_losses, current_streak, best_streak, total_achievements')
+      .select('total_rounds, total_wins, total_losses, current_streak, best_streak')
       .eq('id', user.id)
       .single();
 
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       winRate: Math.round(winRate * 10) / 10, // Round to 1 decimal place
       currentStreak: userData.current_streak || 0,
       bestStreak: userData.best_streak || 0,
-      totalAchievements: userData.total_achievements || 0,
+      totalAchievements: 0, // Placeholder until achievements are implemented
     };
 
     return NextResponse.json(stats);

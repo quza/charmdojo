@@ -241,6 +241,41 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', roundId);
 
+      // Update user statistics for instant fail loss
+      try {
+        const { data: currentUser, error: fetchError } = await supabase
+          .from('users')
+          .select('total_rounds, total_wins, total_losses, current_streak, best_streak')
+          .eq('id', user.id)
+          .single();
+
+        if (!fetchError && currentUser) {
+          // Loss resets streak to 0
+          const newCurrentStreak = 0;
+          const newBestStreak = currentUser.best_streak; // Best streak never decreases
+
+          const { error: statsError } = await supabase
+            .from('users')
+            .update({
+              total_rounds: currentUser.total_rounds + 1,
+              total_wins: currentUser.total_wins,
+              total_losses: currentUser.total_losses + 1,
+              current_streak: newCurrentStreak,
+              best_streak: newBestStreak,
+            })
+            .eq('id', user.id);
+
+          if (statsError) {
+            console.error('Failed to update user stats (instant fail):', statsError);
+          } else {
+            console.log(`📊 User stats updated: Loss recorded (instant fail), streak reset to 0`);
+          }
+        }
+      } catch (error) {
+        console.error('Error updating user stats (instant fail):', error);
+        // Don't throw - this shouldn't break the game flow
+      }
+
       // Return instant fail response
       return NextResponse.json<ChatMessageResponse>(
         {
@@ -372,7 +407,7 @@ export async function POST(request: NextRequest) {
         const { data: currentUser, error: fetchError } = await supabase
           .from('users')
           .select('total_rounds, total_wins, total_losses, current_streak, best_streak')
-          .eq('id', userId)
+          .eq('id', user.id)
           .single();
 
         if (fetchError || !currentUser) {
@@ -394,7 +429,7 @@ export async function POST(request: NextRequest) {
               current_streak: newCurrentStreak,
               best_streak: newBestStreak,
             })
-            .eq('id', userId);
+            .eq('id', user.id);
 
           if (statsError) {
             console.error('Failed to update user stats:', statsError);
