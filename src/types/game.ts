@@ -78,3 +78,30 @@ export interface DescriptionGenerationOptions {
   maxTokens?: number; // default: 500
   fallbackEnabled?: boolean; // default: true
 }
+
+/**
+ * Game round data for history display
+ */
+export interface GameRound {
+  id: string;
+  girlName: string;
+  girlImageUrl: string;
+  girlDescription: string | null;
+  girlPersona: string | null;
+  result: 'win' | 'lose';
+  finalMeter: number;
+  messageCount: number;
+  startedAt: string;
+  completedAt: string;
+}
+
+/**
+ * Response from game rounds API endpoint
+ */
+export interface RoundsResponse {
+  rounds: GameRound[];
+  pagination: {
+    hasMore: boolean;
+    nextCursor: string | null;
+  };
+}

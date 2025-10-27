@@ -2,7 +2,7 @@
 
 import { useUser } from '@/hooks/useUser';
 import { useRouter } from 'next/navigation';
-import { Sparkles, User, Settings, LogOut } from 'lucide-react';
+import { Sparkles, User, Settings, LogOut, BookOpen } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -112,6 +112,10 @@ export default function MainMenuPage() {
     router.push('/settings');
   };
 
+  const handleGameHistory = () => {
+    router.push('/game/history');
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#04060c]">
@@ -173,7 +177,7 @@ export default function MainMenuPage() {
         </div>
 
         {/* Action Cards */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <ActionCard
             title="Start Matching"
             description="Begin a new conversation simulation and practice your skills"
@@ -191,6 +195,12 @@ export default function MainMenuPage() {
             description="Manage your account settings and preferences"
             icon={Settings}
             onClick={handleSettings}
+          />
+          <ActionCard
+            title="Game History"
+            description="Review your past conversations and see your progress"
+            icon={BookOpen}
+            onClick={handleGameHistory}
           />
         </div>
 
