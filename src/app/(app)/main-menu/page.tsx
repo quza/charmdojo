@@ -8,13 +8,16 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ActionCard } from '@/components/game/ActionCard';
 import { StatsCard } from '@/components/game/StatsCard';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 interface UserStats {
   totalRounds: number;
   wins: number;
   losses: number;
   winRate: number;
+  currentStreak: number;
+  bestStreak: number;
+  totalAchievements: number;
 }
 
 export default function MainMenuPage() {
@@ -25,37 +28,72 @@ export default function MainMenuPage() {
     wins: 0,
     losses: 0,
     winRate: 0,
+    currentStreak: 0,
+    bestStreak: 0,
+    totalAchievements: 0,
   });
   const [statsLoading, setStatsLoading] = useState(true);
   const [fadeIn, setFadeIn] = useState(false);
 
-  useEffect(() => {
-    // Trigger fade-in animation
-    setFadeIn(true);
-
-    // Fetch user stats (placeholder for now)
-    const fetchStats = async () => {
-      try {
-        // TODO: Replace with actual API call in Phase 6
-        // For now, use placeholder data
-        await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate API delay
-        setStats({
-          totalRounds: 0,
-          wins: 0,
-          losses: 0,
-          winRate: 0,
-        });
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-      } finally {
-        setStatsLoading(false);
+  // Fetch stats function (defined outside useEffect so it can be called multiple times)
+  const fetchStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const response = await fetch('/api/user/stats', {
+        cache: 'no-store', // Don't cache, always fetch fresh data
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch stats');
       }
-    };
+      
+      const data = await response.json();
+      setStats(data);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      // Keep default stats (all zeros) on error
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
+  // Effect: Initial load and fade-in animation
+  useEffect(() => {
+    setFadeIn(true);
 
     if (user) {
       fetchStats();
     }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]); // fetchStats is stable (useCallback with empty deps), safe to omit
+
+  // Effect: Refetch stats when page becomes visible (user returns from game)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user) {
+        console.log('Page visible, refetching stats...');
+        fetchStats();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Also refetch when window regains focus
+    const handleFocus = () => {
+      if (user) {
+        console.log('Window focused, refetching stats...');
+        fetchStats();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]); // fetchStats is stable (useCallback with empty deps), safe to omit
 
   const handleSignOut = async () => {
     await signOut();
@@ -162,10 +200,10 @@ export default function MainMenuPage() {
         {/* Stats Section */}
         <div className="space-y-6">
           <h2 className="text-center text-2xl font-bold text-[#e15f6e]">Your Progress</h2>
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-5">
             {statsLoading ? (
               <>
-                {[1, 2, 3].map((i) => (
+                {[1, 2, 3, 4, 5].map((i) => (
                   <div
                     key={i}
                     className="h-32 animate-pulse rounded-xl bg-gradient-to-br from-[#04060c] to-[#0a0d1a]"
@@ -181,6 +219,8 @@ export default function MainMenuPage() {
                   value={stats.winRate.toFixed(1)}
                   suffix="%"
                 />
+                <StatsCard label="Current Winstreak" value={stats.currentStreak} />
+                <StatsCard label="Total Achievements" value={stats.totalAchievements} />
               </>
             )}
           </div>

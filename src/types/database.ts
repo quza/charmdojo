@@ -343,6 +343,30 @@ export type Database = {
           wins: number
         }[]
       }
+      get_girl_pool_size: {
+        Args: Record<string, never>
+        Returns: number
+      }
+      get_random_girls: {
+        Args: { count: number }
+        Returns: {
+          id: string
+          name: string
+          image_url: string
+          ethnicity: string
+          hairstyle: string
+          haircolor: string
+          eyecolor: string
+          bodytype: string
+          setting: string
+          source: string
+          generation_prompt: string | null
+          use_count: number
+          last_used_at: string | null
+          created_at: string
+          rewards_generated: boolean
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

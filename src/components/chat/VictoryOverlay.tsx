@@ -119,11 +119,21 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
             const errorData = await response.json();
             const errorMessage = errorData.message || 'Failed to generate reward';
             
-            // Check if this is the "round not won" error - this means race condition
+            // Check if this is a race condition - round not ready yet (status 425)
+            if (response.status === 425 && errorData.shouldRetry) {
+              console.warn(`⚠️ Round not ready yet (attempt ${retryCount + 1}/${maxRetries}) - retrying after delay`);
+              lastError = new Error(errorMessage);
+              retryCount++;
+              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+              continue; // Retry
+            }
+            
+            // Check if this is the "round not won" error (status 403)
             if (response.status === 403 && errorData.error === 'round_not_won') {
               console.warn(`⚠️ Round not marked as won yet (attempt ${retryCount + 1}/${maxRetries})`);
               lastError = new Error(errorMessage);
               retryCount++;
+              await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms before retry
               continue; // Retry
             }
             

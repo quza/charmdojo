@@ -572,8 +572,79 @@ export async function generateCompleteReward(
     console.log(`   Voice: ${timings.voice.toFixed(2)}s (${rewardVoiceUrl ? 'success' : 'failed'})`);
     console.log(`   Image: ${timings.image.toFixed(2)}s (${rewardImageUrl ? 'success' : 'failed'})`);
 
+    // If image generation failed completely (all 3 attempts), delete the girl profile
+    // to prevent her from being selected again (her description triggers content filters)
+    if (!rewardImageUrl && girl_profile_id) {
+      console.log(`\n🗑️  Image generation failed completely - removing problematic girl profile`);
+      console.log(`   Girl Profile ID: ${girl_profile_id}`);
+      
+      try {
+        // Step 1: Fetch the girl profile to get file URLs before deletion
+        const { data: girlProfile, error: fetchError } = await supabase
+          .from('girl_profiles')
+          .select('image_url, reward_image_url, reward_voice_url')
+          .eq('id', girl_profile_id)
+          .single();
+        
+        if (fetchError) {
+          console.error('   ❌ Failed to fetch girl profile for cleanup:', fetchError);
+        } else if (girlProfile) {
+          // Step 2: Delete associated files from Supabase Storage
+          const filesToDelete: string[] = [];
+          
+          // Extract file paths from URLs
+          if (girlProfile.image_url) {
+            const imagePath = girlProfile.image_url.split('/girl-images/')[1];
+            if (imagePath) filesToDelete.push(`girl-images/${imagePath}`);
+          }
+          if (girlProfile.reward_image_url) {
+            const rewardImgPath = girlProfile.reward_image_url.split('/reward-images/')[1];
+            if (rewardImgPath) filesToDelete.push(`reward-images/${rewardImgPath}`);
+          }
+          if (girlProfile.reward_voice_url) {
+            const rewardVoicePath = girlProfile.reward_voice_url.split('/reward-audio/')[1];
+            if (rewardVoicePath) filesToDelete.push(`reward-audio/${rewardVoicePath}`);
+          }
+          
+          // Delete files from storage
+          if (filesToDelete.length > 0) {
+            console.log(`   🗑️  Deleting ${filesToDelete.length} file(s) from storage...`);
+            for (const filePath of filesToDelete) {
+              const bucket = filePath.split('/')[0];
+              const path = filePath.split('/').slice(1).join('/');
+              
+              const { error: storageError } = await supabase.storage
+                .from(bucket)
+                .remove([path]);
+              
+              if (storageError) {
+                console.error(`   ⚠️  Failed to delete ${filePath}:`, storageError.message);
+              } else {
+                console.log(`   ✅ Deleted: ${filePath}`);
+              }
+            }
+          }
+        }
+        
+        // Step 3: Delete the girl profile from database
+        const { error: deleteError } = await supabase
+          .from('girl_profiles')
+          .delete()
+          .eq('id', girl_profile_id);
+        
+        if (deleteError) {
+          console.error('   ❌ Failed to delete girl profile:', deleteError);
+        } else {
+          console.log(`   ✅ Successfully deleted girl profile and associated files`);
+        }
+      } catch (deleteErr) {
+        console.error('   ❌ Error during cleanup:', deleteErr);
+      }
+    }
+
     // Cache rewards to girl profile if linked (for future reuse)
-    if (girl_profile_id) {
+    // Only cache if image generation succeeded
+    if (girl_profile_id && rewardImageUrl) {
       try {
         await cacheRewardsToProfile(girl_profile_id, {
           reward_text: rewardText,
@@ -592,6 +663,8 @@ export async function generateCompleteReward(
           console.error('   ⚠️  Would throw in dev mode (disabled to not break production)');
         }
       }
+    } else if (girl_profile_id && !rewardImageUrl) {
+      console.log('   ⚠️  Skipping reward cache - image generation failed (girl will be deleted)');
     } else {
       console.log('   ⚠️  No girl_profile_id - rewards will NOT be cached for reuse');
     }

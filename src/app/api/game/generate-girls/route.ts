@@ -186,6 +186,19 @@ export async function POST(request: NextRequest) {
       girls = generatedGirls.map((girl, index) => {
         const imageResult = imageResults[index];
         
+        // If we got a replacement girl from pool fallback, use that data
+        if (imageResult.replacementGirl) {
+          console.log(`   ℹ️  Replacing ${girl.name} with ${imageResult.replacementGirl.name} from pool`);
+          return {
+            id: imageResult.girlProfileId || `girl_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            name: imageResult.replacementGirl.name,
+            imageUrl: imageResult.imageUrl || '',
+            attributes: imageResult.replacementGirl.attributes,
+            age: Math.floor(Math.random() * 10) + 19, // Random age 19-28
+          };
+        }
+        
+        // Otherwise use the original generated girl data
         return {
           // Use the real database UUID if available, otherwise temporary ID
           id: imageResult.girlProfileId || `girl_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,

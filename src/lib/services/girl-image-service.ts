@@ -22,6 +22,18 @@ export interface GirlImageResult {
   fromPool?: boolean;
   fromLocalFallback?: boolean;
   girlProfileId?: string; // Database UUID for caching rewards
+  // When using pool fallback, we need the complete girl data
+  replacementGirl?: {
+    name: string;
+    attributes: {
+      ethnicity: string;
+      hairColor: string;
+      eyeColor: string;
+      bodyType: string;
+      hairstyle: string;
+      setting: string;
+    };
+  };
 }
 
 /**
@@ -147,9 +159,9 @@ export async function generateMultipleGirlImages(
  * 
  * Fallback hierarchy:
  * 1. Try Imagen API generation
- * 2. If fails, try random girl from Supabase pool
- * 3. If fails, use local fallback images
- * 4. Last resort: generate placeholder SVG
+ * 2. If fails, try random COMPLETE girl from Supabase pool
+ * 3. If pool empty, retry generation up to 3 times
+ * 4. If all retries fail, return failure (girl will be skipped)
  * 
  * @param girl - Generated girl profile with attributes
  * @returns Result object with image URL and metadata
@@ -172,8 +184,7 @@ export async function generateGirlImageWithFallback(
 
     console.log(`   ✓ Prompt generated (${prompt.length} chars)`);
 
-    let imageBuffer: Buffer;
-    let source: 'imagen' | 'placeholder' | 'fallback' = 'imagen';
+    let imageBuffer: Buffer | null = null;
 
     try {
       const images = await generateImageWithRetry(
@@ -190,14 +201,15 @@ export async function generateGirlImageWithFallback(
     } catch (imagenError) {
       console.error(`   ✗ Imagen generation failed, trying pool fallback...`);
       
-      // Step 2: Try getting random girl from Supabase pool
+      // Step 2: Try getting random COMPLETE girl from Supabase pool
       try {
         const poolGirls = await getRandomGirlsFromPool(1);
         
         if (poolGirls.length > 0) {
           const poolGirl = poolGirls[0];
-          console.log(`   ✓ Using pool fallback: ${poolGirl.name}`);
+          console.log(`   ✓ Using complete girl from pool: ${poolGirl.name}`);
           
+          // Return complete girl data so it can replace the failed generation
           return {
             success: true,
             imageUrl: poolGirl.image_url,
@@ -205,31 +217,82 @@ export async function generateGirlImageWithFallback(
             generationTime: (Date.now() - startTime) / 1000,
             fromPool: true,
             girlProfileId: poolGirl.id, // Include the database UUID!
+            replacementGirl: {
+              name: poolGirl.name,
+              attributes: {
+                ethnicity: poolGirl.ethnicity,
+                hairColor: poolGirl.haircolor,
+                eyeColor: poolGirl.eyecolor,
+                bodyType: poolGirl.bodytype,
+                hairstyle: poolGirl.hairstyle,
+                setting: poolGirl.setting,
+              },
+            },
           };
         }
       } catch (poolError) {
-        console.error(`   ✗ Pool fallback failed, trying local fallback...`);
+        console.error(`   ✗ Pool fallback failed:`, poolError);
       }
       
-      // Step 3: Use local fallback images
-      const fallbackUrls = getRandomFallbackImages(1);
+      // Step 3: Pool is empty, retry generation up to 3 times
+      console.log(`   ⚠️  Pool is empty, retrying generation...`);
       
-      if (fallbackUrls.length > 0) {
-        console.log(`   ✓ Using local fallback image`);
-        
+      let retrySuccess = false;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          console.log(`   🔄 Retry attempt ${attempt}/3 for ${girl.name}...`);
+          
+          const retryImages = await generateImageWithRetry(
+            {
+              prompt,
+              sampleCount: 1,
+              aspectRatio: '3:4',
+            },
+            1 // Single attempt per retry
+          );
+
+          imageBuffer = retryImages[0].buffer;
+          console.log(`   ✓ Retry successful! Image generated (${(imageBuffer.length / 1024).toFixed(2)} KB)`);
+          retrySuccess = true;
+          break; // Success, exit retry loop
+        } catch (retryError) {
+          console.error(`   ✗ Retry attempt ${attempt}/3 failed:`, retryError);
+          
+          if (attempt === 3) {
+            // All retries exhausted, return failure
+            console.error(`   ❌ All retry attempts exhausted for ${girl.name}`);
+            return {
+              success: false,
+              imageUrl: '',
+              usedPlaceholder: false,
+              generationTime: (Date.now() - startTime) / 1000,
+              error: 'Failed to generate after 3 retry attempts',
+            };
+          }
+        }
+      }
+      
+      // Safety check - this should never happen due to return above
+      if (!retrySuccess || !imageBuffer) {
         return {
-          success: true,
-          imageUrl: fallbackUrls[0],
+          success: false,
+          imageUrl: '',
           usedPlaceholder: false,
           generationTime: (Date.now() - startTime) / 1000,
-          fromLocalFallback: true,
+          error: 'Image generation failed unexpectedly',
         };
       }
-      
-      // Last resort: generate placeholder
-      console.log(`   ⚠️  All fallbacks failed, generating placeholder...`);
-      imageBuffer = await generatePlaceholderImage(girl);
-      source = 'placeholder';
+    }
+
+    // Safety check before upload
+    if (!imageBuffer) {
+      return {
+        success: false,
+        imageUrl: '',
+        usedPlaceholder: false,
+        generationTime: (Date.now() - startTime) / 1000,
+        error: 'Image buffer is null',
+      };
     }
 
     // Upload to Supabase Storage
@@ -249,7 +312,7 @@ export async function generateGirlImageWithFallback(
         bodytype: girl.attributes.bodyType,
         setting: girl.attributes.setting,
       },
-      source,
+      source: 'imagen',
       generation_prompt: prompt,
     });
     
@@ -259,7 +322,7 @@ export async function generateGirlImageWithFallback(
     return {
       success: true,
       imageUrl,
-      usedPlaceholder: source === 'placeholder',
+      usedPlaceholder: false,
       generationTime,
       girlProfileId: addedProfile?.id, // Return the database UUID!
     };

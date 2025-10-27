@@ -88,21 +88,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify round result is 'win'
+    // If result is null, it might be a race condition - return a specific status
+    // so the frontend can retry after a short delay
     if (round.result !== 'win') {
       console.log(`❌ Reward generation rejected: Round result is '${round.result}' (expected 'win')`);
       console.log(`   Round ID: ${roundId}`);
-      console.log(`   This may indicate a race condition where the frontend requested the reward`);
-      console.log(`   before the chat API finished updating the round status.`);
       
-      return NextResponse.json(
-        {
-          error: 'round_not_won',
-          message: 'Rewards can only be generated for won rounds',
-          roundResult: round.result,
-          timestamp: new Date().toISOString(),
-        },
-        { status: 403 }
-      );
+      if (round.result === null) {
+        console.log(`   This is likely a race condition - frontend should retry after delay`);
+        return NextResponse.json(
+          {
+            error: 'round_not_ready',
+            message: 'Round not yet marked as won - please retry',
+            roundResult: round.result,
+            shouldRetry: true,
+            timestamp: new Date().toISOString(),
+          },
+          { status: 425 } // 425 Too Early - resource not yet available
+        );
+      } else {
+        console.log(`   This may indicate a race condition where the frontend requested the reward`);
+        console.log(`   before the chat API finished updating the round status.`);
+        return NextResponse.json(
+          {
+            error: 'round_not_won',
+            message: 'Rewards can only be generated for won rounds',
+            roundResult: round.result,
+            shouldRetry: false,
+            timestamp: new Date().toISOString(),
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // Check if reward already exists (use service role client to bypass RLS)

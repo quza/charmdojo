@@ -129,11 +129,26 @@ export async function markGirlAsUsed(girlId: string): Promise<void> {
   try {
     const supabase = await createClient();
     
+    // First get the current count
+    const { data: currentData, error: fetchError } = await supabase
+      .from('girl_profiles')
+      .select('use_count')
+      .eq('id', girlId)
+      .single();
+    
+    if (fetchError) {
+      console.error('⚠️ Error fetching girl use_count:', fetchError);
+      return;
+    }
+    
+    const newCount = (currentData?.use_count || 0) + 1;
+    
+    // Update with new count
     const { error } = await supabase
       .from('girl_profiles')
       .update({
         last_used_at: new Date().toISOString(),
-        use_count: supabase.raw('use_count + 1') as any,
+        use_count: newCount,
       })
       .eq('id', girlId);
     

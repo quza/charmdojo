@@ -147,6 +147,38 @@ export async function POST(request: NextRequest) {
       
       console.log('🏆 Cheat code success: Round marked as won');
 
+      // Update user statistics (same logic as normal win)
+      try {
+        const { data: currentUser, error: fetchError } = await supabase
+          .from('users')
+          .select('total_rounds, total_wins, total_losses, current_streak, best_streak')
+          .eq('id', user.id)
+          .single();
+
+        if (!fetchError && currentUser) {
+          const newCurrentStreak = currentUser.current_streak + 1;
+          const newBestStreak = Math.max(currentUser.best_streak, newCurrentStreak);
+
+          const { error: statsError } = await supabase
+            .from('users')
+            .update({
+              total_rounds: currentUser.total_rounds + 1,
+              total_wins: currentUser.total_wins + 1,
+              current_streak: newCurrentStreak,
+              best_streak: newBestStreak,
+            })
+            .eq('id', user.id);
+
+          if (statsError) {
+            console.error('Failed to update user stats (cheat code):', statsError);
+          } else {
+            console.log(`📊 User stats updated: Win recorded (cheat code), streak: ${newCurrentStreak}`);
+          }
+        }
+      } catch (error) {
+        console.error('Error updating user stats (cheat code):', error);
+      }
+
       // Return victory response
       return NextResponse.json<ChatMessageResponse>({
         userMessage: {
@@ -330,6 +362,49 @@ export async function POST(request: NextRequest) {
         console.warn('⚠️ Game marked as won but database verification failed');
       } else {
         console.log('✅ Verified: Round successfully marked as won in database');
+      }
+    }
+
+    // STEP 5.5: Update user statistics when game ends
+    if (gameStatus !== 'active') {
+      try {
+        // Fetch current user stats
+        const { data: currentUser, error: fetchError } = await supabase
+          .from('users')
+          .select('total_rounds, total_wins, total_losses, current_streak, best_streak')
+          .eq('id', userId)
+          .single();
+
+        if (fetchError || !currentUser) {
+          console.error('Failed to fetch user stats for update:', fetchError);
+        } else {
+          const isWin = gameStatus === 'won';
+          
+          // Calculate new streak
+          let newCurrentStreak = isWin ? currentUser.current_streak + 1 : 0;
+          let newBestStreak = Math.max(currentUser.best_streak, newCurrentStreak);
+
+          // Update user statistics
+          const { error: statsError } = await supabase
+            .from('users')
+            .update({
+              total_rounds: currentUser.total_rounds + 1,
+              total_wins: isWin ? currentUser.total_wins + 1 : currentUser.total_wins,
+              total_losses: isWin ? currentUser.total_losses : currentUser.total_losses + 1,
+              current_streak: newCurrentStreak,
+              best_streak: newBestStreak,
+            })
+            .eq('id', userId);
+
+          if (statsError) {
+            console.error('Failed to update user stats:', statsError);
+          } else {
+            console.log(`📊 User stats updated: ${isWin ? 'Win' : 'Loss'} recorded, streak: ${newCurrentStreak}`);
+          }
+        }
+      } catch (error) {
+        console.error('Error updating user stats:', error);
+        // Don't throw - this shouldn't break the game flow
       }
     }
 
