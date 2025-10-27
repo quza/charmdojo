@@ -21,6 +21,7 @@ export interface GirlImageResult {
   error?: string;
   fromPool?: boolean;
   fromLocalFallback?: boolean;
+  girlProfileId?: string; // Database UUID for caching rewards
 }
 
 /**
@@ -203,6 +204,7 @@ export async function generateGirlImageWithFallback(
             usedPlaceholder: false,
             generationTime: (Date.now() - startTime) / 1000,
             fromPool: true,
+            girlProfileId: poolGirl.id, // Include the database UUID!
           };
         }
       } catch (poolError) {
@@ -236,7 +238,7 @@ export async function generateGirlImageWithFallback(
     
     // Add to pool with attributes (use Supabase MCP)
     // Map camelCase attributes to lowercase for database
-    await addGirlToPool({
+    const addedProfile = await addGirlToPool({
       name: girl.name,
       image_url: imageUrl,
       attributes: {
@@ -259,6 +261,7 @@ export async function generateGirlImageWithFallback(
       imageUrl,
       usedPlaceholder: source === 'placeholder',
       generationTime,
+      girlProfileId: addedProfile?.id, // Return the database UUID!
     };
   } catch (error) {
     const generationTime = (Date.now() - startTime) / 1000;

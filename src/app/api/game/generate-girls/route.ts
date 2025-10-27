@@ -187,7 +187,8 @@ export async function POST(request: NextRequest) {
         const imageResult = imageResults[index];
         
         return {
-          id: `girl_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+          // Use the real database UUID if available, otherwise temporary ID
+          id: imageResult.girlProfileId || `girl_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           name: girl.name,
           imageUrl: imageResult.imageUrl || '',
           attributes: girl.attributes,
@@ -196,7 +197,8 @@ export async function POST(request: NextRequest) {
       });
       
       const successCount = girls.filter(g => g.imageUrl !== '').length;
-      console.log(`✓ Generated ${successCount}/3 girls, added to pool`);
+      const cachedCount = girls.filter(g => !g.id.startsWith('girl_')).length;
+      console.log(`✓ Generated ${successCount}/3 girls, ${cachedCount} added to pool with caching enabled`);
     }
     
     // Filter out girls with failed image generation

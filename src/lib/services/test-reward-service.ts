@@ -24,12 +24,13 @@ async function testElevenLabsVoice() {
     // Generate voice
     console.log('\n2. Generating voice with [orgasmic] tag...');
     console.log(`   Input text: "${testText}"`);
+    console.log('   Note: Emojis will be automatically removed before TTS');
     const audioBuffer = await generateVoice(testText);
 
     console.log(`\n✅ Voice generation successful!`);
     console.log(`   Buffer size: ${(audioBuffer.length / 1024).toFixed(2)} KB`);
     console.log(`   Format: MP3`);
-    console.log(`   Note: Audio includes [orgasmic] prefix automatically`);
+    console.log(`   Note: Audio includes [orgasmic] prefix and excludes emojis`);
 
     return audioBuffer;
   } catch (error: any) {

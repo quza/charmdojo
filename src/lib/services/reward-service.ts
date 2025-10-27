@@ -16,6 +16,7 @@ import {
 } from '@/lib/supabase/storage';
 import { RewardGenerationResult } from '@/types/reward';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
+import { setRewardStatus, clearRewardStatus } from './reward-status';
 
 // Lazy initialization of OpenAI client
 let openaiClient: OpenAI | null = null;
@@ -240,45 +241,88 @@ async function generateRewardVoice(
  * Generate reward image from girl description and upload to storage
  * @param girlDescription - Detailed physical description
  * @param roundId - Round ID for filename
+ * @param onRetry - Optional callback for retry notifications
  * @returns Public URL of uploaded image, or null if failed
  */
 async function generateRewardImage(
   girlDescription: string,
-  roundId: string
+  roundId: string,
+  onRetry?: (attempt: number, maxAttempts: number) => void
 ): Promise<string | null> {
-  try {
-    console.log(`📸 Generating reward image...`);
+  const maxAttempts = 3;
+  let lastError: Error | null = null;
 
-    // Load and substitute prompt
-    const promptTemplate = loadRewardPhotoPrompt();
-    const prompt = promptTemplate.replace('<girl-description>', girlDescription);
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      if (attempt === 1) {
+        console.log(`📸 Generating reward image...`);
+      } else {
+        console.log(`🔄 Retrying reward image generation (attempt ${attempt}/${maxAttempts})...`);
+        // Notify frontend of retry
+        if (onRetry) {
+          onRetry(attempt, maxAttempts);
+        }
+      }
 
-    // Validate prompt substitution
-    if (prompt.includes('<girl-description>')) {
-      throw new Error('Failed to substitute girl description in prompt');
+      // Load and substitute prompt
+      const promptTemplate = loadRewardPhotoPrompt();
+      let prompt = promptTemplate.replace('<girl-description>', girlDescription);
+
+      // Validate prompt substitution
+      if (prompt.includes('<girl-description>')) {
+        throw new Error('Failed to substitute girl description in prompt');
+      }
+
+      // On retry attempts, add additional safety filters to the prompt
+      if (attempt > 1) {
+        prompt = prompt + ' Keep the image tasteful and appropriate. Focus on elegant, artistic portrayal.';
+      }
+
+      // Generate image using Imagen
+      const images = await generateImage({
+        prompt,
+        sampleCount: 1,
+        aspectRatio: '3:4',
+      });
+
+      const imageBuffer = images[0].buffer;
+
+      // Upload to Supabase Storage
+      const filename = generateRewardImageFilename(roundId);
+      const imageUrl = await uploadRewardImage(imageBuffer, filename);
+
+      console.log(`✅ Reward image generated and uploaded`);
+
+      return imageUrl;
+    } catch (error: any) {
+      lastError = error;
+      const isContentFiltered = error.message?.includes('Content filtered');
+      
+      if (isContentFiltered) {
+        console.error(`⚠️ Attempt ${attempt}/${maxAttempts} - Content filtered by Google Responsible AI`);
+        
+        // If we have more attempts, continue to retry
+        if (attempt < maxAttempts) {
+          const delay = 1000 * attempt; // 1s, 2s
+          console.log(`   Waiting ${delay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+      }
+      
+      // For non-content-filter errors or last attempt, log and break
+      console.error(`❌ Reward image generation failed (attempt ${attempt}/${maxAttempts}):`, error.message);
+      
+      if (attempt === maxAttempts) {
+        console.log('   Continuing without image...');
+        return null;
+      }
     }
-
-    // Generate image using Imagen
-    const images = await generateImage({
-      prompt,
-      sampleCount: 1,
-      aspectRatio: '3:4',
-    });
-
-    const imageBuffer = images[0].buffer;
-
-    // Upload to Supabase Storage
-    const filename = generateRewardImageFilename(roundId);
-    const imageUrl = await uploadRewardImage(imageBuffer, filename);
-
-    console.log(`✅ Reward image generated and uploaded`);
-
-    return imageUrl;
-  } catch (error: any) {
-    console.error('❌ Reward image generation failed:', error.message);
-    console.log('   Continuing without image...');
-    return null;
   }
+
+  console.error('❌ All image generation attempts exhausted:', lastError?.message);
+  console.log('   Continuing without image...');
+  return null;
 }
 
 /**
@@ -409,114 +453,165 @@ export async function generateCompleteReward(
   console.log(`🎁 Starting complete reward generation for round ${roundId}`);
   console.log(`================================================`);
 
-  // Fetch round data from database (including girl_profile_id for caching)
-  const supabase = await createClient();
-  const { data: round, error: roundError } = await supabase
-    .from('game_rounds')
-    .select('girl_name, girl_description, girl_persona, girl_profile_id')
-    .eq('id', roundId)
-    .single();
+  // Set initial status
+  setRewardStatus(roundId, {
+    status: 'generating',
+    message: 'Generating reward...',
+  });
 
-  if (roundError || !round) {
-    throw new Error(`Failed to fetch round data: ${roundError?.message || 'Round not found'}`);
-  }
+  try {
+    // Fetch round data from database (including girl_profile_id for caching)
+    const supabase = await createClient();
+    const { data: round, error: roundError } = await supabase
+      .from('game_rounds')
+      .select('girl_name, girl_description, girl_persona, girl_profile_id')
+      .eq('id', roundId)
+      .single();
 
-  const { girl_name, girl_description, girl_persona, girl_profile_id } = round;
-
-  if (!girl_description) {
-    throw new Error('Girl description is required for reward generation');
-  }
-
-  // Check for cached rewards if round is linked to a girl profile
-  if (girl_profile_id) {
-    const cachedRewards = await checkCachedRewards(girl_profile_id);
-    if (cachedRewards) {
-      console.log('   🚀 Using cached rewards (fast path)');
-      // Still save to rewards table for historical tracking
-      await saveRewardToHistory(roundId, cachedRewards);
-      
-      const totalTime = (Date.now() - overallStartTime) / 1000;
-      console.log(`\n================================================`);
-      console.log(`✅ Cached rewards returned in ${totalTime.toFixed(2)}s`);
-      
-      return cachedRewards;
-    }
-  }
-
-  console.log('   🔨 Generating new rewards (no cache available)');
-
-  // Track timing for each asset
-  const timings = {
-    text: 0,
-    voice: 0,
-    image: 0,
-  };
-
-  // Step 1: Generate reward text (required, must succeed)
-  const textStartTime = Date.now();
-  const rewardText = await generateRewardText(girl_name, girl_persona || 'playful');
-  timings.text = (Date.now() - textStartTime) / 1000;
-
-  // Step 2 & 3: Generate voice and image in parallel (optional, can fail)
-  console.log(`\n🔄 Starting parallel generation (voice + image)...`);
-
-  const voiceStartTime = Date.now();
-  const imageStartTime = Date.now();
-
-  const [voiceResult, imageResult] = await Promise.allSettled([
-    generateRewardVoice(rewardText, roundId),
-    generateRewardImage(girl_description, roundId),
-  ]);
-
-  // Extract results
-  const rewardVoiceUrl =
-    voiceResult.status === 'fulfilled' ? voiceResult.value : null;
-  const rewardImageUrl =
-    imageResult.status === 'fulfilled' ? imageResult.value : null;
-
-  timings.voice = (Date.now() - voiceStartTime) / 1000;
-  timings.image = (Date.now() - imageStartTime) / 1000;
-
-  const totalTime = (Date.now() - overallStartTime) / 1000;
-
-  const rewardResult: RewardGenerationResult = {
-    rewardText,
-    rewardVoiceUrl,
-    rewardImageUrl,
-    generationTime: totalTime,
-    breakdown: {
-      textGeneration: timings.text,
-      voiceGeneration: timings.voice,
-      imageGeneration: timings.image,
-    },
-  };
-
-  console.log(`\n================================================`);
-  console.log(`✅ Complete reward generation finished`);
-  console.log(`   Total time: ${totalTime.toFixed(2)}s`);
-  console.log(`   Text: ${timings.text.toFixed(2)}s`);
-  console.log(`   Voice: ${timings.voice.toFixed(2)}s (${rewardVoiceUrl ? 'success' : 'failed'})`);
-  console.log(`   Image: ${timings.image.toFixed(2)}s (${rewardImageUrl ? 'success' : 'failed'})`);
-
-  // Cache rewards to girl profile if linked (for future reuse)
-  if (girl_profile_id) {
-    try {
-      await cacheRewardsToProfile(girl_profile_id, {
-        reward_text: rewardText,
-        reward_voice_url: rewardVoiceUrl,
-        reward_image_url: rewardImageUrl,
-        reward_description: girl_description,
+    if (roundError || !round) {
+      setRewardStatus(roundId, {
+        status: 'failed',
+        message: 'Failed to fetch round data',
       });
-    } catch (cacheError: any) {
-      console.error('   ⚠️  Failed to cache rewards (non-critical):', cacheError.message);
-      // Don't fail the entire operation if caching fails
+      throw new Error(`Failed to fetch round data: ${roundError?.message || 'Round not found'}`);
     }
+
+    const { girl_name, girl_description, girl_persona, girl_profile_id } = round;
+
+    if (!girl_description) {
+      setRewardStatus(roundId, {
+        status: 'failed',
+        message: 'Girl description is required for reward generation',
+      });
+      throw new Error('Girl description is required for reward generation');
+    }
+
+    // Check for cached rewards if round is linked to a girl profile
+    if (girl_profile_id) {
+      const cachedRewards = await checkCachedRewards(girl_profile_id);
+      if (cachedRewards) {
+        console.log('   🚀 Using cached rewards (fast path)');
+        // Still save to rewards table for historical tracking
+        await saveRewardToHistory(roundId, cachedRewards);
+        
+        const totalTime = (Date.now() - overallStartTime) / 1000;
+        console.log(`\n================================================`);
+        console.log(`✅ Cached rewards returned in ${totalTime.toFixed(2)}s`);
+        
+        setRewardStatus(roundId, {
+          status: 'completed',
+          message: 'Reward generated successfully (cached)',
+        });
+        
+        return cachedRewards;
+      }
+    }
+
+    console.log('   🔨 Generating new rewards (no cache available)');
+
+    // Track timing for each asset
+    const timings = {
+      text: 0,
+      voice: 0,
+      image: 0,
+    };
+
+    // Step 1: Generate reward text (required, must succeed)
+    const textStartTime = Date.now();
+    const rewardText = await generateRewardText(girl_name, girl_persona || 'playful');
+    timings.text = (Date.now() - textStartTime) / 1000;
+
+    // Step 2 & 3: Generate voice and image in parallel (optional, can fail)
+    console.log(`\n🔄 Starting parallel generation (voice + image)...`);
+
+    const voiceStartTime = Date.now();
+    const imageStartTime = Date.now();
+
+    // Create a callback for image retry notifications
+    const onImageRetry = (attempt: number, maxAttempts: number) => {
+      setRewardStatus(roundId, {
+        status: 'retrying',
+        message: 'Re-trying reward generation',
+        attempt,
+        maxAttempts,
+      });
+    };
+
+    const [voiceResult, imageResult] = await Promise.allSettled([
+      generateRewardVoice(rewardText, roundId),
+      generateRewardImage(girl_description, roundId, onImageRetry),
+    ]);
+
+    // Extract results
+    const rewardVoiceUrl =
+      voiceResult.status === 'fulfilled' ? voiceResult.value : null;
+    const rewardImageUrl =
+      imageResult.status === 'fulfilled' ? imageResult.value : null;
+
+    timings.voice = (Date.now() - voiceStartTime) / 1000;
+    timings.image = (Date.now() - imageStartTime) / 1000;
+
+    const totalTime = (Date.now() - overallStartTime) / 1000;
+
+    const rewardResult: RewardGenerationResult = {
+      rewardText,
+      rewardVoiceUrl,
+      rewardImageUrl,
+      generationTime: totalTime,
+      breakdown: {
+        textGeneration: timings.text,
+        voiceGeneration: timings.voice,
+        imageGeneration: timings.image,
+      },
+    };
+
+    console.log(`\n================================================`);
+    console.log(`✅ Complete reward generation finished`);
+    console.log(`   Total time: ${totalTime.toFixed(2)}s`);
+    console.log(`   Text: ${timings.text.toFixed(2)}s`);
+    console.log(`   Voice: ${timings.voice.toFixed(2)}s (${rewardVoiceUrl ? 'success' : 'failed'})`);
+    console.log(`   Image: ${timings.image.toFixed(2)}s (${rewardImageUrl ? 'success' : 'failed'})`);
+
+    // Cache rewards to girl profile if linked (for future reuse)
+    if (girl_profile_id) {
+      try {
+        await cacheRewardsToProfile(girl_profile_id, {
+          reward_text: rewardText,
+          reward_voice_url: rewardVoiceUrl,
+          reward_image_url: rewardImageUrl,
+          reward_description: girl_description,
+        });
+      } catch (cacheError: any) {
+        // Make error more visible - this is actually critical for performance!
+        console.error('   🚨 CRITICAL: Failed to cache rewards to girl profile!');
+        console.error('   Error:', cacheError.message);
+        console.error('   Stack:', cacheError.stack);
+        console.error('   Girl Profile ID:', girl_profile_id);
+        // In development, throw to surface the issue immediately
+        if (process.env.NODE_ENV === 'development') {
+          console.error('   ⚠️  Would throw in dev mode (disabled to not break production)');
+        }
+      }
+    } else {
+      console.log('   ⚠️  No girl_profile_id - rewards will NOT be cached for reuse');
+    }
+
+    // Save to rewards table for historical tracking
+    await saveRewardToHistory(roundId, rewardResult);
+
+    setRewardStatus(roundId, {
+      status: 'completed',
+      message: 'Reward generated successfully',
+    });
+
+    return rewardResult;
+  } catch (error) {
+    setRewardStatus(roundId, {
+      status: 'failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+    throw error;
   }
-
-  // Save to rewards table for historical tracking
-  await saveRewardToHistory(roundId, rewardResult);
-
-  return rewardResult;
 }
 
 

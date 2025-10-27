@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
         .single();
 
       // Update round to won status
-      await supabase
+      const { error: updateError } = await supabase
         .from('game_rounds')
         .update({
           final_meter: 100,
@@ -139,7 +139,12 @@ export async function POST(request: NextRequest) {
           message_count: round.message_count + 2,
         })
         .eq('id', roundId);
-
+      
+      if (updateError) {
+        console.error('Failed to update game round (cheat code):', updateError);
+        throw new Error('Failed to update game status');
+      }
+      
       console.log('🏆 Cheat code success: Round marked as won');
 
       // Return victory response
@@ -301,10 +306,32 @@ export async function POST(request: NextRequest) {
       console.log(`🎮 Game ended: ${gameStatus === 'won' ? 'Victory!' : 'Defeat'}`);
     }
 
-    await supabase
+    const { error: updateError } = await supabase
       .from('game_rounds')
       .update(updateData)
       .eq('id', roundId);
+    
+    if (updateError) {
+      console.error('Failed to update game round:', updateError);
+      throw new Error('Failed to update game status');
+    }
+    
+    // For won games, verify the update completed successfully
+    if (gameStatus === 'won') {
+      const { data: verifyRound, error: verifyError } = await supabase
+        .from('game_rounds')
+        .select('result')
+        .eq('id', roundId)
+        .single();
+      
+      if (verifyError || verifyRound?.result !== 'win') {
+        console.error('Failed to verify game round win status:', verifyError);
+        // Still proceed with response, but log the issue
+        console.warn('⚠️ Game marked as won but database verification failed');
+      } else {
+        console.log('✅ Verified: Round successfully marked as won in database');
+      }
+    }
 
     // STEP 6: Build and return response
     const response: ChatMessageResponse = {

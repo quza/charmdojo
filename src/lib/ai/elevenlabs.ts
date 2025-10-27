@@ -10,10 +10,38 @@ let apiKey: string | null = null;
 let voiceId: string | null = null;
 let modelId: string | null = null;
 
+/**
+ * Remove emojis from text for TTS
+ * Emojis sound weird when read aloud by text-to-speech
+ */
+function removeEmojis(text: string): string {
+  // Remove all emoji characters using Unicode ranges
+  // This includes:
+  // - Emoticons (🙂, 😀, etc.)
+  // - Symbols (🔥, ❤️, etc.)
+  // - Flags and other pictographs
+  return text
+    .replace(/[\u{1F600}-\u{1F64F}]/gu, '') // Emoticons
+    .replace(/[\u{1F300}-\u{1F5FF}]/gu, '') // Symbols & Pictographs
+    .replace(/[\u{1F680}-\u{1F6FF}]/gu, '') // Transport & Map Symbols
+    .replace(/[\u{1F700}-\u{1F77F}]/gu, '') // Alchemical Symbols
+    .replace(/[\u{1F780}-\u{1F7FF}]/gu, '') // Geometric Shapes Extended
+    .replace(/[\u{1F800}-\u{1F8FF}]/gu, '') // Supplemental Arrows-C
+    .replace(/[\u{1F900}-\u{1F9FF}]/gu, '') // Supplemental Symbols and Pictographs
+    .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '') // Chess Symbols
+    .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '') // Symbols and Pictographs Extended-A
+    .replace(/[\u{2600}-\u{26FF}]/gu, '')   // Miscellaneous Symbols
+    .replace(/[\u{2700}-\u{27BF}]/gu, '')   // Dingbats
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')   // Variation Selectors
+    .replace(/[\u{1F1E6}-\u{1F1FF}]/gu, '') // Regional Indicator Symbols (flags)
+    .replace(/[\u{E0020}-\u{E007F}]/gu, '') // Tags
+    .trim();
+}
+
 function getElevenLabsConfig() {
   if (!apiKey) {
-    apiKey = process.env.ELEVENLABS_API_KEY;
-    voiceId = process.env.ELEVENLABS_VOICE_ID;
+    apiKey = process.env.ELEVENLABS_API_KEY ?? null;
+    voiceId = process.env.ELEVENLABS_VOICE_ID ?? null;
     modelId = process.env.ELEVENLABS_MODEL_ID || 'eleven_monolingual_v1';
 
     if (!apiKey) {
@@ -43,13 +71,17 @@ export async function generateVoice(
     async () => {
       const { apiKey, voiceId, modelId } = getElevenLabsConfig();
 
+      // Remove emojis from text to prevent them from being read aloud
+      const cleanText = removeEmojis(text);
+
       // Prepend [orgasmic] tag for seductive voice
-      const enhancedText = `[orgasmic]${text}`;
+      const enhancedText = `[orgasmic]${cleanText}`;
 
       console.log(`🎤 Generating voice with ElevenLabs...`);
       console.log(`   Voice ID: ${voiceId}`);
       console.log(`   Model: ${modelId}`);
-      console.log(`   Text length: ${text.length} chars`);
+      console.log(`   Original text length: ${text.length} chars`);
+      console.log(`   Clean text length: ${cleanText.length} chars`);
 
       // Create abort controller for timeout
       const controller = new AbortController();
@@ -110,8 +142,8 @@ export async function generateVoice(
     },
     {
       maxAttempts: 3,
-      delayMs: 1000,
-      onRetry: (attempt, error) => {
+      initialDelay: 1000,
+      onRetry: (error, attempt) => {
         console.warn(`⚠️  Voice generation attempt ${attempt} failed:`, error.message);
         console.log(`   Retrying...`);
       },

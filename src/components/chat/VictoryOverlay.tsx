@@ -28,6 +28,7 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
   const [reward, setReward] = useState<RewardData | null>(null);
   const [isLoadingReward, setIsLoadingReward] = useState(true);
   const [rewardError, setRewardError] = useState<string | null>(null);
+  const [loadingMessage, setLoadingMessage] = useState('Generating reward...');
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
@@ -49,63 +50,138 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
     
     hasRequestedReward.current = true;
     
-    async function fetchReward() {
-      
+    // Start polling for status updates
+    let statusPollInterval: NodeJS.Timeout | null = null;
+    
+    const pollStatus = async () => {
       try {
-        setIsLoadingReward(true);
-        const response = await fetch('/api/reward/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ roundId }),
-        });
+        const response = await fetch(`/api/reward/status?roundId=${roundId}`);
+        if (response.ok) {
+          const statusData = await response.json();
+          if (statusData.status === 'retrying') {
+            setLoadingMessage('Re-trying reward generation');
+          } else if (statusData.status === 'generating') {
+            setLoadingMessage('Generating reward...');
+          }
+        }
+      } catch (error) {
+        console.error('Error polling status:', error);
+      }
+    };
+    
+    async function fetchReward() {
+      const maxRetries = 5;
+      let retryCount = 0;
+      let lastError: Error | null = null;
+      
+      // Start status polling every 2 seconds
+      statusPollInterval = setInterval(pollStatus, 2000);
+      
+      // Add a small initial delay to allow database update to complete
+      // This helps avoid the race condition where VictoryOverlay renders
+      // before the chat API finishes updating the round result to 'win'
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      while (retryCount < maxRetries) {
+        try {
+          setIsLoadingReward(true);
+          
+          // Add exponential backoff delay (except for first attempt)
+          if (retryCount > 0) {
+            const delayMs = Math.min(1000 * Math.pow(2, retryCount - 1), 5000); // 1s, 2s, 4s, 5s, 5s
+            console.log(`⏳ Retrying reward fetch in ${delayMs}ms (attempt ${retryCount + 1}/${maxRetries})...`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+          }
+          
+          const response = await fetch('/api/reward/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roundId }),
+          });
 
-        if (!response.ok) {
-          // Check if reward already exists (409)
-          if (response.status === 409) {
-            const data = await response.json();
-            if (data.existingReward) {
-              setReward({
-                rewardText: data.existingReward.rewardText,
-                rewardVoiceUrl: data.existingReward.rewardVoiceUrl,
-                rewardImageUrl: data.existingReward.rewardImageUrl,
-                generationTime: 0,
-              });
-              return;
+          if (!response.ok) {
+            // Check if reward already exists (409)
+            if (response.status === 409) {
+              const data = await response.json();
+              if (data.existingReward) {
+                setReward({
+                  rewardText: data.existingReward.rewardText,
+                  rewardVoiceUrl: data.existingReward.rewardVoiceUrl,
+                  rewardImageUrl: data.existingReward.rewardImageUrl,
+                  generationTime: 0,
+                });
+                if (statusPollInterval) clearInterval(statusPollInterval);
+                return;
+              }
+            }
+            
+            // Get error details from API
+            const errorData = await response.json();
+            const errorMessage = errorData.message || 'Failed to generate reward';
+            
+            // Check if this is the "round not won" error - this means race condition
+            if (response.status === 403 && errorData.error === 'round_not_won') {
+              console.warn(`⚠️ Round not marked as won yet (attempt ${retryCount + 1}/${maxRetries})`);
+              lastError = new Error(errorMessage);
+              retryCount++;
+              continue; // Retry
+            }
+            
+            console.error('Reward generation API error:', {
+              status: response.status,
+              error: errorData.error,
+              message: errorMessage,
+            });
+            
+            throw new Error(errorMessage);
+          }
+
+          const data: RewardData = await response.json();
+          console.log('✅ Reward received:', {
+            hasText: !!data.rewardText,
+            hasVoice: !!data.rewardVoiceUrl,
+            hasImage: !!data.rewardImageUrl,
+            imageUrl: data.rewardImageUrl,
+          });
+          setReward(data);
+          if (statusPollInterval) clearInterval(statusPollInterval);
+          return; // Success - exit retry loop
+          
+        } catch (error: any) {
+          // If it's a "round not won" error, retry
+          if (error.message.includes('Rewards can only be generated for won rounds')) {
+            lastError = error;
+            retryCount++;
+            if (retryCount < maxRetries) {
+              continue; // Retry
             }
           }
           
-          // Get error details from API
-          const errorData = await response.json();
-          const errorMessage = errorData.message || 'Failed to generate reward';
-          
-          console.error('Reward generation API error:', {
-            status: response.status,
-            error: errorData.error,
-            message: errorMessage,
-          });
-          
-          throw new Error(errorMessage);
+          // For other errors, fail immediately
+          console.error('Error fetching reward:', error);
+          console.error('Round ID:', roundId);
+          console.error('Error details:', error.message, error.stack);
+          setRewardError(error.message);
+          if (statusPollInterval) clearInterval(statusPollInterval);
+          return;
+        } finally {
+          setIsLoadingReward(false);
         }
-
-        const data: RewardData = await response.json();
-        console.log('✅ Reward received:', {
-          hasText: !!data.rewardText,
-          hasVoice: !!data.rewardVoiceUrl,
-          hasImage: !!data.rewardImageUrl,
-          imageUrl: data.rewardImageUrl,
-        });
-        setReward(data);
-      } catch (error: any) {
-        console.error('Error fetching reward:', error);
-        console.error('Round ID:', roundId);
-        console.error('Error details:', error.message, error.stack);
-        setRewardError(error.message);
-      } finally {
-        setIsLoadingReward(false);
       }
+      
+      // If we exhausted all retries
+      console.error('Failed to fetch reward after', maxRetries, 'attempts');
+      setRewardError(lastError?.message || 'Failed to generate reward after multiple attempts');
+      setIsLoadingReward(false);
+      if (statusPollInterval) clearInterval(statusPollInterval);
     }
 
     fetchReward();
+    
+    // Cleanup
+    return () => {
+      if (statusPollInterval) clearInterval(statusPollInterval);
+    };
   }, [roundId]);
 
   // Set mounted state (for portal)
@@ -186,7 +262,7 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
               {isLoadingReward ? (
                 <div className="w-48 h-48 bg-neutral-800 rounded-xl border-2 border-primary/30 flex flex-col items-center justify-center gap-2 mx-auto">
                   <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-                  <p className="text-xs text-white/40">Generating reward...</p>
+                  <p className="text-xs text-white/40">{loadingMessage}</p>
                 </div>
               ) : imageError || !reward?.rewardImageUrl ? (
                 <div className="w-48 h-48 bg-neutral-800 rounded-xl border-2 border-primary/30 flex items-center justify-center overflow-hidden mx-auto">
@@ -221,7 +297,7 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
           {isLoadingReward ? (
             <div className="flex items-center gap-2 text-white/60 text-sm">
               <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
-              Generating reward...
+              {loadingMessage}
             </div>
           ) : rewardError ? (
             <div className="text-center">

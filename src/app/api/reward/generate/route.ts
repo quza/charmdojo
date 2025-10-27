@@ -89,6 +89,11 @@ export async function POST(request: NextRequest) {
 
     // Verify round result is 'win'
     if (round.result !== 'win') {
+      console.log(`❌ Reward generation rejected: Round result is '${round.result}' (expected 'win')`);
+      console.log(`   Round ID: ${roundId}`);
+      console.log(`   This may indicate a race condition where the frontend requested the reward`);
+      console.log(`   before the chat API finished updating the round status.`);
+      
       return NextResponse.json(
         {
           error: 'round_not_won',

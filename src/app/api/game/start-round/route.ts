@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     // Step 3: Check if girl has cached rewards (optimization)
     const supabase = await createClient();
-    let description: string;
+    let description: string = '';
     let usedCachedDescription = false;
 
     // If girlId is from pool, check if rewards are already cached
@@ -115,6 +115,10 @@ export async function POST(request: NextRequest) {
 
     // Step 5: Create game round in database
     
+    // Only link to girl_profile if girlId is a valid UUID from the pool
+    // Temporary generated girls have IDs like "girl_..." or "fallback_..." which aren't UUIDs
+    const isFromPool = girlId && !girlId.startsWith('girl_') && !girlId.startsWith('fallback_');
+    
     const { data: round, error: dbError } = await supabase
       .from('game_rounds')
       .insert({
@@ -123,7 +127,7 @@ export async function POST(request: NextRequest) {
         girl_image_url: girlData.imageUrl,
         girl_description: description,
         girl_persona: persona,
-        girl_profile_id: girlId, // Link to girl profile for reward caching
+        girl_profile_id: isFromPool ? girlId : null, // Only link if from pool
         initial_meter: 20,
         message_count: 0,
       })
