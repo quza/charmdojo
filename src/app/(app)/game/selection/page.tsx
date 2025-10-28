@@ -17,8 +17,6 @@ export default function SelectionPage() {
   const [error, setError] = useState<string | null>(null);
   const [generationTime, setGenerationTime] = useState<number | null>(null);
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
-  const [imagesLoaded, setImagesLoaded] = useState(false);
-  const [loadingImages, setLoadingImages] = useState(false);
   const [hasFetched, setHasFetched] = useState(false); // Prevent multiple fetches
 
   const fetchGirls = useCallback(async () => {
@@ -59,15 +57,8 @@ export default function SelectionPage() {
         console.log('Generation metadata:', data.metadata);
       }
 
-      // First, set the girls data but keep loading state
       setGirls(data.girls);
       setGenerationTime(data.metadata.totalTime);
-      
-      // Now preload all images before showing the UI
-      setLoadingImages(true);
-      await preloadImages(data.girls);
-      setImagesLoaded(true);
-      setLoadingImages(false);
     } catch (err) {
       console.error('Error generating girls:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -75,45 +66,6 @@ export default function SelectionPage() {
       setLoading(false);
     }
   }, []); // Empty deps - function doesn't depend on any external values
-
-  /**
-   * Preload all girl images before showing the selection UI
-   */
-  const preloadImages = useCallback(async (girls: Girl[]): Promise<void> => {
-    return new Promise((resolve) => {
-      const imageUrls = girls.map((g) => g.imageUrl).filter(Boolean);
-      
-      if (imageUrls.length === 0) {
-        resolve();
-        return;
-      }
-
-      let loadedCount = 0;
-      const totalImages = imageUrls.length;
-
-      imageUrls.forEach((url) => {
-        const img = new window.Image();
-        
-        img.onload = () => {
-          loadedCount++;
-          if (loadedCount === totalImages) {
-            resolve();
-          }
-        };
-
-        img.onerror = () => {
-          // Even on error, count it as "loaded" so we don't hang forever
-          loadedCount++;
-          console.warn(`Failed to preload image: ${url}`);
-          if (loadedCount === totalImages) {
-            resolve();
-          }
-        };
-
-        img.src = url;
-      });
-    });
-  }, []);
 
   useEffect(() => {
     // Wait for auth check to complete
@@ -146,8 +98,8 @@ export default function SelectionPage() {
     return null;
   }
 
-  // Loading state - generating profiles or loading images
-  if (loading || loadingImages) {
+  // Loading state - generating profiles
+  if (loading) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-[#04060c] px-4">
         <div className="text-center">
@@ -159,13 +111,10 @@ export default function SelectionPage() {
 
           {/* Loading text */}
           <h2 className="mb-2 text-2xl font-bold text-[#e15f6e]">
-            {loadingImages ? 'Loading Images...' : 'Generating Your Matches...'}
+            Generating Your Matches...
           </h2>
           <p className="text-white/70">
-            {loadingImages 
-              ? 'Making sure everything looks perfect...' 
-              : 'This may take up to 30 seconds. Please wait.'
-            }
+            This may take up to 30 seconds. Please wait.
           </p>
 
           {/* Progress dots animation */}
@@ -237,11 +186,7 @@ export default function SelectionPage() {
     );
   }
 
-  // Success state - show girl selection (only when images are loaded)
-  if (!imagesLoaded) {
-    return null;
-  }
-
+  // Success state - show girl selection
   return (
     <main className="min-h-screen bg-[#04060c] px-4 py-12">
       <div className="mx-auto max-w-7xl animate-in fade-in duration-500">

@@ -5,10 +5,17 @@ import { useGame } from '@/hooks/useGame';
 import { useUser } from '@/hooks/useUser';
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import Confetti from 'react-confetti';
+import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { useWindowSize } from '@/hooks/useWindowSize';
 import { createClient } from '@/lib/supabase/client';
 import { markShouldRefresh } from '@/lib/utils/stats-cache';
+
+// Dynamically import Confetti to reduce initial bundle size
+const Confetti = dynamic(() => import('react-confetti'), {
+  ssr: false,
+  loading: () => null,
+});
 
 interface VictoryOverlayProps {
   roundId: string;
@@ -354,28 +361,35 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
                       <p className="text-xs text-white/40">{loadingMessage}</p>
                     </div>
                   ) : imageError || !reward?.rewardImageUrl ? (
-                    <div className="w-48 h-48 bg-neutral-800 rounded-xl border-2 border-primary/30 flex items-center justify-center overflow-hidden mx-auto">
-                      <img 
-                        src={girl?.imageUrl} 
-                        alt={girl?.name || "Girl"} 
-                        className="w-full h-full object-cover opacity-50"
-                      />
+                    <div className="relative w-48 h-48 bg-neutral-800 rounded-xl border-2 border-primary/30 overflow-hidden mx-auto">
+                      {girl?.imageUrl && (
+                        <Image 
+                          src={girl.imageUrl} 
+                          alt={girl?.name || "Girl"}
+                          fill
+                          className="object-cover opacity-50"
+                          loading="lazy"
+                        />
+                      )}
                     </div>
                   ) : (
-                    <img 
-                      src={reward.rewardImageUrl} 
-                      alt={`${girl?.name || "Girl"} - Reward`} 
-                      className="w-full h-auto max-h-96 object-contain rounded-xl border-2 border-primary/30 cursor-pointer hover:opacity-90 transition-opacity"
-                      style={{ maxWidth: '280px' }}
-                      onClick={() => setShowFullImage(true)}
-                      onError={(e) => {
-                        console.error('Failed to load reward image:', reward.rewardImageUrl);
-                        setImageError(true);
-                      }}
-                      onLoad={() => {
-                        console.log('✅ Reward image loaded successfully');
-                      }}
-                    />
+                    <div className="relative" style={{ width: '280px', height: '384px' }}>
+                      <Image 
+                        src={reward.rewardImageUrl} 
+                        alt={`${girl?.name || "Girl"} - Reward`}
+                        fill
+                        className="object-contain rounded-xl border-2 border-primary/30 cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => setShowFullImage(true)}
+                        onError={() => {
+                          console.error('Failed to load reward image:', reward.rewardImageUrl);
+                          setImageError(true);
+                        }}
+                        onLoad={() => {
+                          console.log('✅ Reward image loaded successfully');
+                        }}
+                        loading="lazy"
+                      />
+                    </div>
                   )}
                 </div>
               </div>
@@ -435,11 +449,12 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
                 className="absolute inset-0 bg-black/95 flex items-center justify-center z-50 p-4 cursor-pointer"
                 onClick={() => setShowFullImage(false)}
               >
-                <div className="relative max-w-full max-h-full">
-                  <img 
+                <div className="relative w-full h-full max-w-4xl max-h-[90vh]">
+                  <Image 
                     src={reward.rewardImageUrl} 
                     alt={`${girl?.name || "Girl"} - Full Size`}
-                    className="max-w-full max-h-full object-contain rounded-lg"
+                    fill
+                    className="object-contain rounded-lg"
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowFullImage(false);

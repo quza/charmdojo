@@ -1,7 +1,20 @@
-import { ChatInterface } from '@/components/chat/ChatInterface';
+import dynamic from 'next/dynamic';
 import { Message, GirlProfile } from '@/types/chat';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+
+// Dynamically import ChatInterface to reduce initial bundle size
+const ChatInterface = dynamic(
+  () => import('@/components/chat/ChatInterface').then(mod => ({ default: mod.ChatInterface })),
+  { 
+    ssr: true,
+    loading: () => (
+      <div className="flex min-h-screen items-center justify-center bg-[#04060c]">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#e15f6e] border-t-transparent" />
+      </div>
+    )
+  }
+);
 
 export default async function ChatPage({ params }: { params: Promise<{ roundId: string }> }) {
   const supabase = await createClient();

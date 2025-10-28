@@ -11,6 +11,9 @@ interface GirlCardProps {
   onSelect: (girl: Girl) => void;
 }
 
+// Blur placeholder for lazy loaded images
+const BLUR_DATA_URL = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNzAwIiBoZWlnaHQ9IjQ3NSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiLz4=";
+
 export function GirlCard({ girl, isSelected, onSelect }: GirlCardProps) {
   return (
     <Card
@@ -57,7 +60,9 @@ export function GirlCard({ girl, isSelected, onSelect }: GirlCardProps) {
             isSelected && 'brightness-105'
           )}
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          priority
+          loading="lazy"
+          placeholder="blur"
+          blurDataURL={BLUR_DATA_URL}
         />
         
         {/* Selected Indicator Overlay */}
