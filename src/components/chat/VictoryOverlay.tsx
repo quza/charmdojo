@@ -10,7 +10,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useWindowSize } from '@/hooks/useWindowSize';
 import { createClient } from '@/lib/supabase/client';
-import { markShouldRefresh } from '@/lib/utils/stats-cache';
+import { markShouldRefresh, markShouldRefreshLeaderboard } from '@/lib/utils/stats-cache';
 
 // Dynamically import Confetti to reduce initial bundle size
 const Confetti = dynamic(() => import('react-confetti'), {
@@ -320,6 +320,7 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
   const handleContinueMatching = () => {
     // Mark that stats and achievements should be refreshed after game completion
     markShouldRefresh();
+    markShouldRefreshLeaderboard();
     resetGame();
     router.push('/game/selection');
   };
@@ -327,6 +328,7 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
   const handleMainMenu = () => {
     // Mark that stats and achievements should be refreshed after game completion
     markShouldRefresh();
+    markShouldRefreshLeaderboard();
     resetGame();
     router.push('/main-menu');
   };

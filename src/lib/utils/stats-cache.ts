@@ -24,6 +24,7 @@ interface CacheEntry<T> {
 const STATS_CACHE_KEY = 'charmdojo_stats_cache';
 const ACHIEVEMENTS_CACHE_KEY = 'charmdojo_achievements_cache';
 const SHOULD_REFRESH_KEY = 'charmdojo_should_refresh';
+const SHOULD_REFRESH_LEADERBOARD_KEY = 'charmdojo_should_refresh_leaderboard';
 
 // Cache expiration: 24 hours (in milliseconds)
 const CACHE_EXPIRATION = 24 * 60 * 60 * 1000;
@@ -151,8 +152,38 @@ export function clearAllCache(): void {
     localStorage.removeItem(STATS_CACHE_KEY);
     localStorage.removeItem(ACHIEVEMENTS_CACHE_KEY);
     localStorage.removeItem(SHOULD_REFRESH_KEY);
+    localStorage.removeItem(SHOULD_REFRESH_LEADERBOARD_KEY);
   } catch (error) {
     console.error('Error clearing cache:', error);
+  }
+}
+
+/**
+ * Mark that leaderboard should be refreshed on next page load
+ * Called after game completion
+ */
+export function markShouldRefreshLeaderboard(): void {
+  try {
+    localStorage.setItem(SHOULD_REFRESH_LEADERBOARD_KEY, 'true');
+  } catch (error) {
+    console.error('Error marking should refresh leaderboard:', error);
+  }
+}
+
+/**
+ * Check if leaderboard should be refreshed
+ * Returns true if refresh is needed, and clears the flag
+ */
+export function checkAndClearLeaderboardRefreshFlag(): boolean {
+  try {
+    const shouldRefresh = localStorage.getItem(SHOULD_REFRESH_LEADERBOARD_KEY) === 'true';
+    if (shouldRefresh) {
+      localStorage.removeItem(SHOULD_REFRESH_LEADERBOARD_KEY);
+    }
+    return shouldRefresh;
+  } catch (error) {
+    console.error('Error checking leaderboard refresh flag:', error);
+    return false;
   }
 }
 

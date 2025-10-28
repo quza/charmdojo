@@ -48,6 +48,8 @@ export default function MainMenuPage() {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [achievementsLoading, setAchievementsLoading] = useState(true);
   const [fadeIn, setFadeIn] = useState(false);
+  const [userRank, setUserRank] = useState<number | null>(null);
+  const [rankLoading, setRankLoading] = useState(true);
 
   // Fetch stats function with caching
   const fetchStats = useCallback(async (forceRefresh = false) => {
@@ -173,6 +175,40 @@ export default function MainMenuPage() {
     }
   }, [user]);
 
+  // Fetch user rank function
+  const fetchUserRank = useCallback(async () => {
+    if (!user) return;
+
+    setRankLoading(true);
+    try {
+      console.log('Fetching user rank from: /api/user/rank');
+      
+      const response = await fetch('/api/user/rank', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin',
+      });
+      
+      console.log('Rank response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Rank fetch failed:', response.status, errorText);
+        throw new Error(`Failed to fetch rank: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      setUserRank(data.rank);
+      console.log('User rank fetched:', data.rank);
+    } catch (error) {
+      console.error('Error fetching user rank:', error);
+    } finally {
+      setRankLoading(false);
+    }
+  }, [user]);
+
   // Effect: Initial load and fade-in animation
   useEffect(() => {
     setFadeIn(true);
@@ -201,9 +237,12 @@ export default function MainMenuPage() {
         fetchStats(false);
         fetchAchievements(false);
       }
+      
+      // Always fetch rank fresh (no caching)
+      fetchUserRank();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); // fetchStats and fetchAchievements are stable (useCallback with proper deps), safe to omit
+  }, [user]); // fetchStats, fetchAchievements, and fetchUserRank are stable (useCallback with proper deps), safe to omit
 
   // Effect: Refetch stats and achievements ONLY when returning from game (via visibility change)
   // This ensures fresh data after game completion
@@ -300,6 +339,13 @@ export default function MainMenuPage() {
           <div>
             <h2 className="text-lg font-semibold text-white">Welcome back,</h2>
             <p className="text-xl font-bold text-[#e15f6e]">{userName}</p>
+            {rankLoading ? (
+              <p className="text-sm text-white/50">Loading rank...</p>
+            ) : userRank !== null ? (
+              <p className="text-sm text-white/70">Rank: #{userRank}</p>
+            ) : (
+              <p className="text-sm text-white/70">Unranked</p>
+            )}
           </div>
         </div>
         <Button

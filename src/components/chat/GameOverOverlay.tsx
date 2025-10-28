@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useGame } from '@/hooks/useGame';
-import { markShouldRefresh } from '@/lib/utils/stats-cache';
+import { markShouldRefresh, markShouldRefreshLeaderboard } from '@/lib/utils/stats-cache';
 
 interface GameOverOverlayProps {
   roundId: string;
@@ -19,6 +19,7 @@ export function GameOverOverlay({ roundId }: GameOverOverlayProps) {
   const handleTryAgain = () => {
     // Mark that stats and achievements should be refreshed after game completion
     markShouldRefresh();
+    markShouldRefreshLeaderboard();
     resetGame();
     router.push('/game/selection');
   };
@@ -26,6 +27,7 @@ export function GameOverOverlay({ roundId }: GameOverOverlayProps) {
   const handleMainMenu = () => {
     // Mark that stats and achievements should be refreshed after game completion
     markShouldRefresh();
+    markShouldRefreshLeaderboard();
     resetGame();
     router.push('/main-menu');
   };

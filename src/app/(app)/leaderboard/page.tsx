@@ -2,12 +2,13 @@
 
 import { useUser } from '@/hooks/useUser';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Trophy, Medal, Award } from 'lucide-react';
+import { ArrowLeft, Trophy, Medal, Award, RefreshCw } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { LeaderboardEntry, LeaderboardResponse } from '@/types/leaderboard';
+import { checkAndClearLeaderboardRefreshFlag } from '@/lib/utils/stats-cache';
 
 export default function LeaderboardPage() {
   const { user, loading: authLoading } = useUser();
@@ -15,6 +16,7 @@ export default function LeaderboardPage() {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -22,34 +24,60 @@ export default function LeaderboardPage() {
     }
   }, [user, authLoading, router]);
 
-  useEffect(() => {
-    async function fetchLeaderboard() {
-      if (!user) return;
+  const fetchLeaderboard = useCallback(async () => {
+    if (!user) return;
 
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    setError(null);
 
-      try {
-        const response = await fetch('/api/leaderboard', {
-          cache: 'no-store',
-        });
+    try {
+      const response = await fetch('/api/leaderboard', {
+        cache: 'no-store',
+      });
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch leaderboard');
-        }
-
-        const data: LeaderboardResponse = await response.json();
-        setLeaderboardData(data);
-      } catch (err) {
-        console.error('Error fetching leaderboard:', err);
-        setError('Failed to load leaderboard. Please try again.');
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error('Failed to fetch leaderboard');
       }
-    }
 
-    fetchLeaderboard();
+      const data: LeaderboardResponse = await response.json();
+      setLeaderboardData(data);
+    } catch (err) {
+      console.error('Error fetching leaderboard:', err);
+      setError('Failed to load leaderboard. Please try again.');
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [fetchLeaderboard]);
+
+  // Effect: Refetch leaderboard when returning from game (via visibility change)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user) {
+        // Check if the refresh flag was set (e.g., by game completion)
+        const shouldRefresh = checkAndClearLeaderboardRefreshFlag();
+        
+        if (shouldRefresh) {
+          console.log('Page visible after game completion - refreshing leaderboard...');
+          fetchLeaderboard();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user, fetchLeaderboard]);
+
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
+    fetchLeaderboard();
+  };
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -72,15 +100,27 @@ export default function LeaderboardPage() {
     <main className="min-h-screen bg-[#04060c] px-4 py-8">
       {/* Header */}
       <div className="mx-auto mb-8 max-w-7xl">
-        <Button
-          onClick={() => router.push('/main-menu')}
-          variant="outline"
-          size="default"
-          className="mb-6 border-[#e15f6e]/30 text-[#e15f6e] hover:bg-[#e15f6e]/10"
-        >
-          <ArrowLeft className="size-4" />
-          Back to Menu
-        </Button>
+        <div className="mb-6 flex items-center gap-3">
+          <Button
+            onClick={() => router.push('/main-menu')}
+            variant="outline"
+            size="default"
+            className="border-[#e15f6e]/30 text-[#e15f6e] hover:bg-[#e15f6e]/10"
+          >
+            <ArrowLeft className="size-4" />
+            Back to Menu
+          </Button>
+          <Button
+            onClick={handleManualRefresh}
+            variant="outline"
+            size="default"
+            className="border-[#e15f6e]/30 text-[#e15f6e] hover:bg-[#e15f6e]/10"
+            disabled={loading || isRefreshing}
+          >
+            <RefreshCw className={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
 
         <div className="text-center">
           <div className="mb-4 flex justify-center">
