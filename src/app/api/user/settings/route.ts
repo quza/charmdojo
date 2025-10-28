@@ -1,6 +1,6 @@
 /**
  * PATCH /api/user/settings
- * Update user settings (e.g., display_rewards preference)
+ * Update user settings (e.g., display_rewards, show_on_leaderboard preferences)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 
 interface UpdateSettingsRequest {
   display_rewards?: boolean;
+  show_on_leaderboard?: boolean;
 }
 
 export async function PATCH(request: NextRequest) {
@@ -15,12 +16,38 @@ export async function PATCH(request: NextRequest) {
     // Parse request body
     const body: UpdateSettingsRequest = await request.json();
 
-    // Validate request body
-    if (typeof body.display_rewards !== 'boolean') {
+    // Validate request body - at least one field must be present
+    if (
+      typeof body.display_rewards !== 'boolean' &&
+      typeof body.show_on_leaderboard !== 'boolean'
+    ) {
+      return NextResponse.json(
+        {
+          error: 'invalid_request',
+          message: 'At least one setting field must be provided',
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate individual fields if provided
+    if (body.display_rewards !== undefined && typeof body.display_rewards !== 'boolean') {
       return NextResponse.json(
         {
           error: 'invalid_request',
           message: 'display_rewards must be a boolean value',
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 }
+      );
+    }
+
+    if (body.show_on_leaderboard !== undefined && typeof body.show_on_leaderboard !== 'boolean') {
+      return NextResponse.json(
+        {
+          error: 'invalid_request',
+          message: 'show_on_leaderboard must be a boolean value',
           timestamp: new Date().toISOString(),
         },
         { status: 400 }
@@ -45,15 +72,25 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // Build update object dynamically
+    const updateData: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (body.display_rewards !== undefined) {
+      updateData.display_rewards = body.display_rewards;
+    }
+
+    if (body.show_on_leaderboard !== undefined) {
+      updateData.show_on_leaderboard = body.show_on_leaderboard;
+    }
+
     // Update user settings in database
     const { data: updatedUser, error: updateError } = await supabase
       .from('users')
-      .update({
-        display_rewards: body.display_rewards,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', user.id)
-      .select('display_rewards')
+      .select('display_rewards, show_on_leaderboard')
       .single();
 
     if (updateError) {
@@ -69,15 +106,14 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    console.log(`✅ Updated settings for user ${user.id}:`, {
-      display_rewards: body.display_rewards,
-    });
+    console.log(`✅ Updated settings for user ${user.id}:`, updateData);
 
     // Return success response
     return NextResponse.json(
       {
         success: true,
         display_rewards: updatedUser.display_rewards,
+        show_on_leaderboard: updatedUser.show_on_leaderboard,
         timestamp: new Date().toISOString(),
       },
       { status: 200 }
@@ -94,4 +130,3 @@ export async function PATCH(request: NextRequest) {
     );
   }
 }
-

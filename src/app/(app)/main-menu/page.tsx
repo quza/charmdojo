@@ -2,7 +2,7 @@
 
 import { useUser } from '@/hooks/useUser';
 import { useRouter } from 'next/navigation';
-import { Sparkles, User, Settings, LogOut, BookOpen } from 'lucide-react';
+import { Sparkles, User, Settings, LogOut, BookOpen, Trophy } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -221,6 +221,10 @@ export default function MainMenuPage() {
     router.push('/game/history');
   };
 
+  const handleLeaderboard = () => {
+    router.push('/leaderboard');
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#04060c]">
@@ -282,7 +286,7 @@ export default function MainMenuPage() {
         </div>
 
         {/* Action Cards */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
           <ActionCard
             title="Start Matching"
             description="Begin a new conversation simulation and practice your skills"
@@ -306,6 +310,12 @@ export default function MainMenuPage() {
             description="Review your past conversations and see your progress"
             icon={BookOpen}
             onClick={handleGameHistory}
+          />
+          <ActionCard
+            title="Leaderboard"
+            description="See how you rank against other players globally"
+            icon={Trophy}
+            onClick={handleLeaderboard}
           />
         </div>
 
