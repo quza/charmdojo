@@ -122,6 +122,133 @@ async function checkAchievementCondition(userId: string, achievementKey: string)
       return !error && rounds && rounds.length > 0;
     }
 
+    case 'comeback_king': {
+      // Win a simulation after the meter dropped below 10%
+      const { data: winningRounds, error: roundsError } = await supabase
+        .from('game_rounds')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('result', 'win');
+
+      if (roundsError || !winningRounds || winningRounds.length === 0) {
+        return false;
+      }
+
+      // Check if any winning round had a message with meter_after < 10
+      for (const round of winningRounds) {
+        const { data: messages, error: messagesError } = await supabase
+          .from('messages')
+          .select('meter_after')
+          .eq('round_id', round.id)
+          .lt('meter_after', 10)
+          .limit(1);
+
+        if (!messagesError && messages && messages.length > 0) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    case 'smooth_talker': {
+      // Send 3 consecutive messages rated 'excellent' in one game
+      const { data: rounds, error: roundsError } = await supabase
+        .from('game_rounds')
+        .select('id')
+        .eq('user_id', userId);
+
+      if (roundsError || !rounds) {
+        return false;
+      }
+
+      // Check each round for 3 consecutive excellent messages
+      for (const round of rounds) {
+        const { data: messages, error: messagesError } = await supabase
+          .from('messages')
+          .select('category, role, created_at')
+          .eq('round_id', round.id)
+          .eq('role', 'user')
+          .order('created_at', { ascending: true });
+
+        if (messagesError || !messages) {
+          continue;
+        }
+
+        // Check for 3 consecutive 'excellent' messages
+        let consecutiveExcellent = 0;
+        for (const message of messages) {
+          if (message.category === 'excellent') {
+            consecutiveExcellent++;
+            if (consecutiveExcellent >= 3) {
+              return true;
+            }
+          } else {
+            consecutiveExcellent = 0;
+          }
+        }
+      }
+
+      return false;
+    }
+
+    case 'the_marathon': {
+      // Win a simulation with more than 30 messages
+      const { data: rounds, error } = await supabase
+        .from('game_rounds')
+        .select('message_count')
+        .eq('user_id', userId)
+        .eq('result', 'win')
+        .gt('message_count', 30)
+        .limit(1);
+
+      return !error && rounds && rounds.length > 0;
+    }
+
+    case 'charm_master': {
+      // Win 10 simulations total
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('total_wins')
+        .eq('id', userId)
+        .single();
+
+      return !error && user && user.total_wins >= 10;
+    }
+
+    case 'untouchable': {
+      // Get a 7 charm winstreak
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('current_streak')
+        .eq('id', userId)
+        .single();
+
+      return !error && user && user.current_streak >= 7;
+    }
+
+    case 'student_of_the_game': {
+      // Complete 5 simulations (win or lose)
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('total_rounds')
+        .eq('id', userId)
+        .single();
+
+      return !error && user && user.total_rounds >= 5;
+    }
+
+    case 'legendary': {
+      // Win 50 simulations total
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('total_wins')
+        .eq('id', userId)
+        .single();
+
+      return !error && user && user.total_wins >= 50;
+    }
+
     default:
       return false;
   }

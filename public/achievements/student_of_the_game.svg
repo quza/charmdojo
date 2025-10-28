@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="gradStudent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#673ab7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9c27b0;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="90" fill="url(#gradStudent)" opacity="0.2"/>
+  
+  <!-- Book and graduation cap -->
+  <g transform="translate(100, 110)">
+    <!-- Open book -->
+    <path d="M -40 -10 Q -40 -30 0 -35 Q 40 -30 40 -10 L 40 20 Q 40 25 0 20 Q -40 25 -40 20 Z" 
+          fill="url(#gradStudent)" stroke="#673ab7" stroke-width="2"/>
+    
+    <!-- Book center line -->
+    <line x1="0" y1="-35" x2="0" y2="20" stroke="#673ab7" stroke-width="2"/>
+    
+    <!-- Book pages -->
+    <path d="M -30 -5 L -10 -5 M -30 2 L -15 2 M -30 9 L -8 9" 
+          stroke="#fff" stroke-width="2" opacity="0.7"/>
+    <path d="M 10 -5 L 30 -5 M 15 2 L 30 2 M 8 9 L 30 9" 
+          stroke="#fff" stroke-width="2" opacity="0.7"/>
+  </g>
+  
+  <!-- Graduation cap -->
+  <g transform="translate(100, 65)">
+    <!-- Cap top (square board) -->
+    <rect x="-30" y="-8" width="60" height="3" fill="#673ab7" stroke="#9c27b0" stroke-width="2"/>
+    
+    <!-- Cap base -->
+    <path d="M 0 -5 L -25 0 L -20 8 L 20 8 L 25 0 Z" 
+          fill="url(#gradStudent)" stroke="#673ab7" stroke-width="2"/>
+    
+    <!-- Tassel -->
+    <line x1="25" y1="-8" x2="32" y2="5" stroke="#ffd700" stroke-width="2"/>
+    <circle cx="32" cy="7" r="4" fill="#ffd700"/>
+  </g>
+</svg>

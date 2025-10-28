@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import Confetti from 'react-confetti';
 import { useWindowSize } from '@/hooks/useWindowSize';
 import { createClient } from '@/lib/supabase/client';
+import { markShouldRefresh } from '@/lib/utils/stats-cache';
 
 interface VictoryOverlayProps {
   roundId: string;
@@ -253,11 +254,15 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
   }, []);
 
   const handleContinueMatching = () => {
+    // Mark that stats and achievements should be refreshed after game completion
+    markShouldRefresh();
     resetGame();
     router.push('/game/selection');
   };
 
   const handleMainMenu = () => {
+    // Mark that stats and achievements should be refreshed after game completion
+    markShouldRefresh();
     resetGame();
     router.push('/main-menu');
   };

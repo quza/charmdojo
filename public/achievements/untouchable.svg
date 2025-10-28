@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="gradFire" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b35;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f22a5a;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="90" fill="url(#gradFire)" opacity="0.2"/>
+  
+  <!-- Seven stacked flames -->
+  <g transform="translate(100, 100)">
+    <!-- Center flame (tallest) -->
+    <path d="M 0 -55 Q -18 -40 -12 -20 Q -6 -5 0 15 Q 6 -5 12 -20 Q 18 -40 0 -55 Z" 
+          fill="url(#gradFire)" stroke="#ff6b35" stroke-width="2"/>
+    
+    <!-- Left flames -->
+    <path d="M -25 -40 Q -38 -30 -33 -18 Q -28 -8 -22 5 Q -16 -8 -11 -18 Q -6 -30 -25 -40 Z" 
+          fill="url(#gradFire)" opacity="0.9"/>
+    <path d="M -45 -25 Q -55 -18 -51 -10 Q -47 -3 -42 5 Q -37 -3 -33 -10 Q -29 -18 -45 -25 Z" 
+          fill="url(#gradFire)" opacity="0.8"/>
+    
+    <!-- Right flames -->
+    <path d="M 25 -40 Q 38 -30 33 -18 Q 28 -8 22 5 Q 16 -8 11 -18 Q 6 -30 25 -40 Z" 
+          fill="url(#gradFire)" opacity="0.9"/>
+    <path d="M 45 -25 Q 55 -18 51 -10 Q 47 -3 42 5 Q 37 -3 33 -10 Q 29 -18 45 -25 Z" 
+          fill="url(#gradFire)" opacity="0.8"/>
+    
+    <!-- Small outer flames -->
+    <path d="M -60 -10 Q -68 -6 -65 0 Q -62 5 -58 10 Q -54 5 -51 0 Q -48 -6 -60 -10 Z" 
+          fill="url(#gradFire)" opacity="0.7"/>
+    <path d="M 60 -10 Q 68 -6 65 0 Q 62 5 58 10 Q 54 5 51 0 Q 48 -6 60 -10 Z" 
+          fill="url(#gradFire)" opacity="0.7"/>
+    
+    <!-- Number 7 badge -->
+    <g transform="translate(0, 35)">
+      <circle cx="0" cy="0" r="20" fill="#ffd700" stroke="#ff6b35" stroke-width="3"/>
+      <text x="0" y="8" font-family="Arial, sans-serif" font-size="24" font-weight="bold" 
+            fill="#ff6b35" text-anchor="middle">7</text>
+    </g>
+  </g>
+</svg>

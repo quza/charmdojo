@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { OAuthButtons } from './OAuthButtons';
 import { OrDivider } from './OrDivider';
+import { markShouldRefresh } from '@/lib/utils/stats-cache';
 
 export function SigninForm() {
   const router = useRouter();
@@ -47,6 +48,9 @@ export function SigninForm() {
         toast.error(result.error?.message || 'Failed to sign in');
         return;
       }
+
+      // Mark that stats and achievements should be refreshed after sign-in
+      markShouldRefresh();
 
       toast.success('Welcome back!');
       router.push('/main-menu');

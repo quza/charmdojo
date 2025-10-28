@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="gradLegend" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffd700;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffaa00;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop offset="0%" style="stop-color:#fff;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#ffd700;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Glowing background -->
+  <circle cx="100" cy="100" r="90" fill="url(#glow)"/>
+  
+  <!-- Legendary star -->
+  <g transform="translate(100, 100)">
+    <!-- Outer rays -->
+    <g stroke="#ffd700" stroke-width="4" opacity="0.7">
+      <line x1="0" y1="-75" x2="0" y2="-85"/>
+      <line x1="53" y1="-53" x2="60" y2="-60"/>
+      <line x1="75" y1="0" x2="85" y2="0"/>
+      <line x1="53" y1="53" x2="60" y2="60"/>
+      <line x1="0" y1="75" x2="0" y2="85"/>
+      <line x1="-53" y1="53" x2="-60" y2="60"/>
+      <line x1="-75" y1="0" x2="-85" y2="0"/>
+      <line x1="-53" y1="-53" x2="-60" y2="-60"/>
+    </g>
+    
+    <!-- Main star -->
+    <path d="M 0 -60 L 14 -18 L 58 -18 L 23 10 L 37 52 L 0 24 L -37 52 L -23 10 L -58 -18 L -14 -18 Z" 
+          fill="url(#gradLegend)" stroke="#ffd700" stroke-width="3"/>
+    
+    <!-- Inner accent star -->
+    <path d="M 0 -40 L 9 -12 L 39 -12 L 15 7 L 25 35 L 0 16 L -25 35 L -15 7 L -39 -12 L -9 -12 Z" 
+          fill="#fff" opacity="0.4"/>
+    
+    <!-- Number 50 -->
+    <text x="0" y="10" font-family="Arial, sans-serif" font-size="28" font-weight="bold" 
+          fill="#fff" text-anchor="middle" stroke="#000" stroke-width="1.5">50</text>
+  </g>
+  
+  <!-- Sparkles around the star -->
+  <g fill="#ffeb3b">
+    <path d="M 30 30 L 32 25 L 34 30 L 39 32 L 34 34 L 32 39 L 30 34 L 25 32 Z"/>
+    <path d="M 170 50 L 172 45 L 174 50 L 179 52 L 174 54 L 172 59 L 170 54 L 165 52 Z"/>
+    <path d="M 160 140 L 162 135 L 164 140 L 169 142 L 164 144 L 162 149 L 160 144 L 155 142 Z"/>
+    <path d="M 40 160 L 42 155 L 44 160 L 49 162 L 44 164 L 42 169 L 40 164 L 35 162 Z"/>
+  </g>
+</svg>

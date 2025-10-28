@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="gradCharm" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff9800;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ff5722;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="90" fill="url(#gradCharm)" opacity="0.2"/>
+  
+  <!-- Star -->
+  <g transform="translate(100, 100)">
+    <!-- Large star -->
+    <path d="M 0 -50 L 12 -15 L 48 -15 L 19 8 L 30 43 L 0 20 L -30 43 L -19 8 L -48 -15 L -12 -15 Z" 
+          fill="url(#gradCharm)" stroke="#ff9800" stroke-width="3"/>
+    
+    <!-- Inner star accent -->
+    <path d="M 0 -30 L 7 -9 L 29 -9 L 11 5 L 18 26 L 0 12 L -18 26 L -11 5 L -29 -9 L -7 -9 Z" 
+          fill="#ffeb3b" opacity="0.5"/>
+    
+    <!-- Number 10 -->
+    <g transform="translate(0, 0)">
+      <text x="0" y="10" font-family="Arial, sans-serif" font-size="32" font-weight="bold" 
+            fill="#fff" text-anchor="middle" stroke="#000" stroke-width="1">10</text>
+    </g>
+  </g>
+</svg>

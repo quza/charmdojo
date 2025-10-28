@@ -12,8 +12,10 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     
     if (!error) {
-      // Successful authentication - redirect to intended destination
-      return NextResponse.redirect(`${origin}${redirectTo}`);
+      // Successful authentication - redirect to intended destination with refresh flag
+      const finalRedirect = new URL(redirectTo, origin);
+      finalRedirect.searchParams.set('refresh', 'true');
+      return NextResponse.redirect(finalRedirect);
     }
   }
 

@@ -12,6 +12,15 @@ import { AchievementCard } from '@/components/game/AchievementCard';
 import { showAchievementToasts } from '@/components/game/AchievementToast';
 import { useEffect, useState, useCallback } from 'react';
 import { Achievement } from '@/types/achievement';
+import {
+  getCachedStats,
+  setCachedStats,
+  getCachedAchievements,
+  setCachedAchievements,
+  checkAndClearRefreshFlag,
+  clearAllCache,
+  markShouldRefresh,
+} from '@/lib/utils/stats-cache';
 
 interface UserStats {
   totalRounds: number;
@@ -40,12 +49,25 @@ export default function MainMenuPage() {
   const [achievementsLoading, setAchievementsLoading] = useState(true);
   const [fadeIn, setFadeIn] = useState(false);
 
-  // Fetch stats function (defined outside useEffect so it can be called multiple times)
-  const fetchStats = useCallback(async () => {
+  // Fetch stats function with caching
+  const fetchStats = useCallback(async (forceRefresh = false) => {
+    if (!user) return;
+
+    // Try to use cached data if not forcing refresh
+    if (!forceRefresh) {
+      const cached = getCachedStats(user.id);
+      if (cached) {
+        console.log('Using cached stats');
+        setStats(cached);
+        setStatsLoading(false);
+        return;
+      }
+    }
+
     setStatsLoading(true);
     try {
       const response = await fetch('/api/user/stats', {
-        cache: 'no-store', // Don't cache, always fetch fresh data
+        cache: 'no-store',
       });
       
       if (!response.ok) {
@@ -54,19 +76,40 @@ export default function MainMenuPage() {
       
       const data = await response.json();
       setStats(data);
+      // Cache the fetched data
+      setCachedStats(user.id, data);
+      console.log('Stats fetched and cached');
     } catch (error) {
       console.error('Error fetching stats:', error);
       // Keep default stats (all zeros) on error
     } finally {
       setStatsLoading(false);
     }
-  }, []);
+  }, [user]);
 
-  // Fetch achievements function
-  const fetchAchievements = useCallback(async () => {
+  // Fetch achievements function with caching
+  const fetchAchievements = useCallback(async (forceRefresh = false) => {
+    if (!user) return;
+
+    // Try to use cached data if not forcing refresh
+    if (!forceRefresh) {
+      const cached = getCachedAchievements(user.id);
+      if (cached) {
+        console.log('Using cached achievements');
+        setAchievements(cached);
+        setAchievementsLoading(false);
+        return;
+      }
+    }
+
     setAchievementsLoading(true);
     try {
-      const response = await fetch('/api/user/achievements', {
+      // Add checkNew parameter to conditionally check for new achievements
+      const url = forceRefresh 
+        ? '/api/user/achievements?checkNew=true' 
+        : '/api/user/achievements?checkNew=false';
+      
+      const response = await fetch(url, {
         cache: 'no-store',
       });
       
@@ -76,9 +119,12 @@ export default function MainMenuPage() {
       
       const data = await response.json();
       setAchievements(data.achievements);
+      // Cache the fetched data
+      setCachedAchievements(user.id, data.achievements);
+      console.log('Achievements fetched and cached');
       
-      // Show toasts for newly unlocked achievements
-      if (data.newlyUnlocked && data.newlyUnlocked.length > 0) {
+      // Show toasts for newly unlocked achievements (only when force refreshing)
+      if (forceRefresh && data.newlyUnlocked && data.newlyUnlocked.length > 0) {
         const newlyUnlockedAchievements = data.achievements.filter((a: Achievement) =>
           data.newlyUnlocked.includes(a.key)
         );
@@ -89,50 +135,72 @@ export default function MainMenuPage() {
     } finally {
       setAchievementsLoading(false);
     }
-  }, []);
+  }, [user]);
 
   // Effect: Initial load and fade-in animation
   useEffect(() => {
     setFadeIn(true);
 
     if (user) {
-      fetchStats();
-      fetchAchievements();
+      // Check for refresh query param (from OAuth callback)
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasRefreshParam = urlParams.has('refresh');
+      
+      // Check if we should refresh (e.g., after sign-in or game completion)
+      const shouldRefresh = checkAndClearRefreshFlag() || hasRefreshParam;
+      
+      // Clean up URL if refresh param was present
+      if (hasRefreshParam) {
+        // Mark for refresh and clean URL
+        markShouldRefresh();
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+      
+      if (shouldRefresh) {
+        console.log('Refresh flag detected - fetching fresh data with achievement checks');
+        fetchStats(true);
+        fetchAchievements(true);
+      } else {
+        console.log('No refresh flag - using cached data if available');
+        fetchStats(false);
+        fetchAchievements(false);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); // fetchStats and fetchAchievements are stable (useCallback with empty deps), safe to omit
+  }, [user]); // fetchStats and fetchAchievements are stable (useCallback with proper deps), safe to omit
 
-  // Effect: Refetch stats and achievements when page becomes visible (user returns from game)
+  // Effect: Refetch stats and achievements ONLY when returning from game (via visibility change)
+  // This ensures fresh data after game completion
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && user) {
-        console.log('Page visible, refetching stats and achievements...');
-        fetchStats();
-        fetchAchievements();
+        // Check if the refresh flag was set (e.g., by game completion)
+        const shouldRefresh = checkAndClearRefreshFlag();
+        
+        if (shouldRefresh) {
+          console.log('Page visible after game completion - refreshing with achievement checks...');
+          fetchStats(true);
+          fetchAchievements(true);
+        } else {
+          console.log('Page visible but no refresh needed - using cached data');
+        }
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Also refetch when window regains focus
-    const handleFocus = () => {
-      if (user) {
-        console.log('Window focused, refetching stats and achievements...');
-        fetchStats();
-        fetchAchievements();
-      }
-    };
-
-    window.addEventListener('focus', handleFocus);
+    // Remove focus handler - no longer needed
+    // We only refresh on sign-in and after game completion
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); // fetchStats and fetchAchievements are stable (useCallback with empty deps), safe to omit
+  }, [user]); // fetchStats and fetchAchievements are stable (useCallback with proper deps), safe to omit
 
   const handleSignOut = async () => {
+    // Clear cache on sign out
+    clearAllCache();
     await signOut();
     router.push('/');
   };
@@ -276,10 +344,10 @@ export default function MainMenuPage() {
         {/* Achievements Section */}
         <div className="space-y-6">
           <h2 className="text-center text-2xl font-bold text-[#e15f6e]">Your Achievements</h2>
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-5">
             {achievementsLoading ? (
               <>
-                {[1, 2, 3].map((i) => (
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
                   <div
                     key={i}
                     className="h-40 animate-pulse rounded-xl bg-gradient-to-br from-[#04060c] to-[#0a0d1a]"
