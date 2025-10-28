@@ -324,12 +324,6 @@ export default function MainMenuPage() {
         {/* Action Cards */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
           <ActionCard
-            title="Start Matching"
-            description="Begin a new conversation simulation and practice your skills"
-            icon={Sparkles}
-            onClick={handleStartMatching}
-          />
-          <ActionCard
             title="Edit Profile"
             description="Update your profile information and preferences"
             icon={User}
@@ -340,6 +334,13 @@ export default function MainMenuPage() {
             description="Manage your account settings and preferences"
             icon={Settings}
             onClick={handleSettings}
+          />
+          <ActionCard
+            title="Start Matching"
+            description="Begin a new conversation simulation and practice your skills"
+            icon={Sparkles}
+            onClick={handleStartMatching}
+            className="hover:scale-110 hover:shadow-2xl hover:shadow-[#f53049]/40 bg-gradient-to-br from-[#f53049]/20 to-[#f22a5a]/20 before:from-[#f53049] before:to-[#f22a5a] before:opacity-100 before:transition-all before:duration-300 hover:before:from-white hover:before:to-white after:from-[#f53049]/10 after:to-[#f22a5a]/10 after:transition-all after:duration-300 hover:after:from-[#f22b56] hover:after:to-[#f22b56] [&_.rounded-full]:ring-2 [&_.rounded-full]:ring-transparent [&_.rounded-full]:transition-all [&_.rounded-full]:duration-0 [&_.rounded-full]:delay-300 [&_.rounded-full]:group-hover:delay-0 [&_.rounded-full]:group-hover:ring-white [&_[data-slot=card-title]]:transition-all [&_[data-slot=card-title]]:duration-0 [&_[data-slot=card-title]]:delay-300 [&_[data-slot=card-title]]:group-hover:delay-0 [&_[data-slot=card-title]]:group-hover:!text-white"
           />
           <ActionCard
             title="Game History"

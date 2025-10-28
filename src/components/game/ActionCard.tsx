@@ -17,7 +17,7 @@ export function ActionCard({ title, description, icon: Icon, onClick, className 
     <Card
       onClick={onClick}
       className={cn(
-        'relative cursor-pointer overflow-hidden border-0 transition-all duration-300',
+        'group relative cursor-pointer overflow-hidden border-0 transition-all duration-300',
         'hover:scale-105 hover:shadow-lg hover:shadow-[#f53049]/20',
         'bg-gradient-to-br from-[#04060c] to-[#0a0d1a]',
         'before:absolute before:inset-0 before:rounded-xl before:p-[1px]',
