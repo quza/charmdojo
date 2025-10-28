@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useGame } from '@/hooks/useGame';
+import { useGameStore } from '@/stores/gameStore';
 import { useUser } from '@/hooks/useUser';
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -94,6 +95,16 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
   useEffect(() => {
     // If we've already made the request, skip
     if (hasRequestedReward.current) {
+      return;
+    }
+    
+    // CRITICAL: Verify this overlay is for the correct round
+    // If the roundId from store doesn't match, this overlay is stale
+    // (e.g., persisted 'won' status from a previous game)
+    const storeRoundId = useGameStore.getState().roundId;
+    if (storeRoundId !== roundId) {
+      console.warn('⚠️ VictoryOverlay roundId mismatch - skipping reward fetch');
+      console.warn(`   Expected: ${roundId}, Got: ${storeRoundId}`);
       return;
     }
     
@@ -234,8 +245,54 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
         }
       }
       
-      // If we exhausted all retries
-      console.error('Failed to fetch reward after', maxRetries, 'attempts');
+      // If we exhausted all retries, make a few more patient attempts with longer delays
+      // This handles cases where the backend needed extra time to process (e.g., cheat codes, slow DB updates)
+      const finalAttempts = 3;
+      for (let finalAttempt = 0; finalAttempt < finalAttempts; finalAttempt++) {
+        try {
+          const delayMs = 2000 + (finalAttempt * 1000); // 2s, 3s, 4s
+          console.log(`⏳ Making extended attempt ${finalAttempt + 1}/${finalAttempts} after initial retries (waiting ${delayMs}ms)...`);
+          setLoadingMessage('Almost there...');
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+          
+          const response = await fetch('/api/reward/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roundId }),
+          });
+
+          if (response.ok) {
+            const data: RewardData = await response.json();
+            console.log(`✅ Reward generated successfully on extended attempt ${finalAttempt + 1}`);
+            setReward(data);
+            setIsLoadingReward(false);
+            if (statusPollInterval) clearInterval(statusPollInterval);
+            return;
+          } else if (response.status === 409) {
+            // Reward already exists
+            const data = await response.json();
+            if (data.existingReward) {
+              console.log(`✅ Reward retrieved on extended attempt ${finalAttempt + 1} (already existed)`);
+              setReward({
+                rewardText: data.existingReward.rewardText,
+                rewardVoiceUrl: data.existingReward.rewardVoiceUrl,
+                rewardImageUrl: data.existingReward.rewardImageUrl,
+                generationTime: 0,
+              });
+              setIsLoadingReward(false);
+              if (statusPollInterval) clearInterval(statusPollInterval);
+              return;
+            }
+          }
+          
+          console.warn(`⚠️ Extended attempt ${finalAttempt + 1} also failed with status:`, response.status);
+        } catch (finalError) {
+          console.warn(`⚠️ Extended attempt ${finalAttempt + 1} failed with error:`, finalError);
+        }
+      }
+      
+      // If we exhausted all retries AND all extended attempts failed
+      console.error('Failed to fetch reward after', maxRetries + finalAttempts, 'total attempts');
       setRewardError(lastError?.message || 'Failed to generate reward after multiple attempts');
       setIsLoadingReward(false);
       if (statusPollInterval) clearInterval(statusPollInterval);
@@ -378,7 +435,7 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
                         src={reward.rewardImageUrl} 
                         alt={`${girl?.name || "Girl"} - Reward`}
                         fill
-                        className="object-contain rounded-xl border-2 border-primary/30 cursor-pointer hover:opacity-90 transition-opacity"
+                        className="object-cover rounded-xl border-2 border-primary/30 cursor-pointer hover:opacity-90 transition-opacity"
                         onClick={() => setShowFullImage(true)}
                         onError={() => {
                           console.error('Failed to load reward image:', reward.rewardImageUrl);

@@ -68,7 +68,11 @@ function buildSystemPrompt(
 - **Current Success Meter:** ${context.currentMeter}%
 - **Message Count:** ${context.messageCount}
 
-${context.girlDescription ? `## Your Appearance:\n${context.girlDescription}\n` : ''}
+${context.girlDescription ? `## Your Appearance & Photos:
+${context.girlDescription}
+
+You should be naturally aware of how you look and where your photos were taken. Reference your appearance or photo context when it's relevant to the conversation. Be confident but not vain.
+` : ''}
 
 ## Message Quality Context:
 ${deltaContext}
@@ -86,6 +90,125 @@ ${deltaContext}
 Respond naturally to the user's message as ${context.girlName}. Just provide your response, nothing else.`;
 
   return systemPrompt;
+}
+
+/**
+ * Build system prompt for disengaged one-word response
+ * Used when meter is low and user sends poor messages
+ */
+function buildDisengagedSystemPrompt(context: ConversationContext): string {
+  return `You are ${context.girlName}, an attractive woman on a dating app.
+
+The user just sent a message that wasn't very interesting or engaging. You're not that invested in this conversation yet (success meter is at ${context.currentMeter}%).
+
+Respond with a very short, unengaged reply that shows you're not really interested. Examples:
+- "lol"
+- "haha"
+- "nice"
+- "cool"
+- "k"
+- "yeah"
+- "oh"
+
+DO NOT:
+- Ask questions back
+- Show enthusiasm
+- Use multiple emojis
+- Give long responses
+
+Just give a minimal one-word or two-word response that shows you're not impressed. Keep it under 10 characters.`;
+}
+
+/**
+ * Add natural typing imperfections based on excitement and context
+ */
+function addNaturalImperfections(
+  response: string,
+  meter: number,
+  delta: number
+): string {
+  let result = response;
+  
+  // Higher meter + positive delta = more excitement typos
+  if (meter > 60 && delta >= 3) {
+    // Elongate excited words (30% chance)
+    if (Math.random() > 0.7) {
+      result = result.replace(/\bhaha\b/gi, 'hahaha');
+      result = result.replace(/\blol\b/gi, 'loll');
+      result = result.replace(/\bomg\b/gi, 'omggg');
+      result = result.replace(/\byeah\b/gi, 'yeahh');
+      result = result.replace(/\bso\b/gi, 'soo');
+    }
+  }
+  
+  // Random casual typos (8% chance overall)
+  if (Math.random() > 0.92) {
+    const commonTypos: Record<string, string> = {
+      "you're": "your",
+      "that's": "thats",
+      "don't": "dont",
+      "it's": "its",
+      "I'm": "im",
+      "can't": "cant",
+    };
+    
+    for (const [correct, typo] of Object.entries(commonTypos)) {
+      if (result.includes(correct) && Math.random() > 0.5) {
+        result = result.replace(correct, typo);
+        break; // Only one typo per message
+      }
+    }
+  }
+  
+  // Drop ending punctuation when low meter/uninterested (40% chance)
+  if (meter < 40 && Math.random() > 0.6) {
+    result = result.replace(/\.$/, '');
+  }
+  
+  return result;
+}
+
+/**
+ * Check if should send multiple messages (double texting)
+ */
+function shouldDoubleText(meter: number, delta: number): boolean {
+  return meter > 70 && delta >= 5 && Math.random() > 0.6; // 40% chance when excited
+}
+
+/**
+ * Generate follow-up messages for double texting
+ */
+async function generateFollowUpMessages(
+  context: ConversationContext,
+  mainResponse: string,
+  openai: OpenAI
+): Promise<string[]> {
+  const prompt = `You just sent: "${mainResponse}"
+
+You're so excited you want to send 1-2 quick follow-up messages (like when you're really into someone and can't help but keep talking).
+
+Generate 1-2 very short follow-up messages (under 30 characters each) that show excitement. Examples:
+- "wait"
+- "omg"
+- "this is so cool"
+- "I love that!!"
+
+Just output the messages, one per line, nothing else.`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4-turbo',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.9,
+      max_tokens: 50,
+    });
+
+    const followUps = response.choices[0]?.message?.content?.trim().split('\n').filter(m => m.length > 0) || [];
+    return followUps.slice(0, 2); // Max 2 follow-ups
+  } catch (error) {
+    console.error('Error generating follow-up messages:', error);
+    return [];
+  }
 }
 
 // Function calling schema removed - evaluation now handled by success-meter.ts
@@ -116,8 +239,15 @@ export async function generateChatResponse(
       context,
     });
 
+    // Check if should give disengaged response
+    const shouldBeDisengaged = 
+      (params.currentMeter < 30 && analysis.delta <= -2) || // Low meter + negative message
+      (analysis.delta <= -4); // Any really poor message
+
     // Step 2: Generate girl's response based on message quality
-    const systemPrompt = buildSystemPrompt(context, analysis.delta);
+    const systemPrompt = shouldBeDisengaged
+      ? buildDisengagedSystemPrompt(context)
+      : buildSystemPrompt(context, analysis.delta);
 
     // Prepare conversation history (last 10 messages for context)
     const recentHistory = params.conversationHistory.slice(-10);
@@ -158,20 +288,40 @@ export async function generateChatResponse(
       finalResponse = finalResponse.substring(0, 297) + '...';
     }
 
+    // Apply natural imperfections
+    const improvedResponse = addNaturalImperfections(
+      finalResponse,
+      params.currentMeter,
+      analysis.delta
+    );
+
+    // Check if should double text (send multiple messages)
+    let multipleMessages: string[] | undefined;
+    if (shouldDoubleText(params.currentMeter, analysis.delta)) {
+      const followUps = await generateFollowUpMessages(context, improvedResponse, openai);
+      if (followUps.length > 0) {
+        multipleMessages = [improvedResponse, ...followUps];
+      }
+    }
+
     // Log the interaction for debugging
     console.log(`🤖 AI Response Generated:`, {
       delta: analysis.delta,
       category: analysis.category,
-      responseLength: finalResponse.length,
+      responseLength: improvedResponse.length,
       reasoning: analysis.reasoning.substring(0, 100),
+      disengaged: shouldBeDisengaged,
+      multipleMessages: multipleMessages ? multipleMessages.length : 1,
     });
 
     // Return combined result
     return {
-      response: finalResponse,
+      response: improvedResponse,
       successDelta: analysis.delta,
       category: analysis.category,
       reasoning: analysis.reasoning,
+      disengaged: shouldBeDisengaged,
+      multipleMessages,
     };
   } catch (error: any) {
     console.error('Error generating chat response:', error);

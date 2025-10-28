@@ -12,7 +12,9 @@ export function GameOverOverlay({ roundId }: GameOverOverlayProps) {
   const router = useRouter();
   
   // Read from game store instead of props
-  const { currentMeter, failReason, resetGame } = useGame();
+  const { currentMeter, failReason, resetGame, girl } = useGame();
+  
+  const isGhosted = failReason === 'You got ghosted...';
 
   const handleTryAgain = () => {
     // Mark that stats and achievements should be refreshed after game completion
@@ -32,10 +34,17 @@ export function GameOverOverlay({ roundId }: GameOverOverlayProps) {
     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-neutral-900 border border-red-500/30 rounded-2xl p-8 max-w-sm w-full text-center space-y-4 animate-in fade-in zoom-in duration-300">
         {/* Game Over Icon */}
-        <div className="text-6xl mb-2">💔</div>
+        <div className="text-6xl mb-2">{isGhosted ? '👻' : '💔'}</div>
         
         {/* Title */}
-        <h2 className="text-2xl font-bold text-red-400">Game Over</h2>
+        <h2 className="text-2xl font-bold text-red-400">
+          {isGhosted ? 'Ghosted' : 'Game Over'}
+        </h2>
+        
+        {/* Unmatch message with girl name */}
+        <p className="text-lg text-white/80">
+          {girl?.name || 'She'} unmatched you
+        </p>
         
         {/* Final Meter */}
         <div className="py-4">

@@ -18,6 +18,7 @@ interface GameState {
   // Game status
   gameStatus: GameStatus;
   failReason: string | null;
+  isWonThisSession: boolean; // NEW: Track if win happened in current session
 
   // UI state
   isLoading: boolean;
@@ -37,6 +38,7 @@ interface GameState {
   addMessages: (userMessage: Message, aiMessage: Message) => void;
   addOptimisticMessage: (message: Message) => void;
   removeOptimisticMessage: (messageId: string) => void;
+  updateMessageStatus: (messageId: string, status: 'sending' | 'read' | 'sent') => void;
   setGameStatus: (status: GameStatus, reason?: string) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -53,6 +55,7 @@ const initialState = {
   messages: [],
   gameStatus: 'active' as GameStatus,
   failReason: null,
+  isWonThisSession: false,
   isLoading: false,
   error: null,
   hasHydrated: false,
@@ -70,7 +73,7 @@ export const useGameStore = create<GameState>()(
         // to prevent VictoryOverlay from rendering with persisted 'won' status
         if (state.roundId !== roundId && state.gameStatus === 'won') {
           console.log('🔄 Detected round change - resetting game status from won to active');
-          set({ gameStatus: 'active', failReason: null });
+          set({ gameStatus: 'active', failReason: null, isWonThisSession: false });
         }
 
         // Check if we already have data for this round and it's recent
@@ -94,6 +97,7 @@ export const useGameStore = create<GameState>()(
           showDelta: false,
           gameStatus: 'active',
           failReason: null,
+          isWonThisSession: false, // Reset session flag for new round
           isLoading: false,
           error: null,
           hasHydrated: true,
@@ -128,10 +132,19 @@ export const useGameStore = create<GameState>()(
         }));
       },
 
+      updateMessageStatus: (messageId, status) => {
+        set((state) => ({
+          messages: state.messages.map((msg) =>
+            msg.id === messageId ? { ...msg, status } : msg
+          ),
+        }));
+      },
+
       setGameStatus: (status, reason) => {
         set({
           gameStatus: status,
           failReason: reason || null,
+          isWonThisSession: status === 'won' ? true : false, // Track session win
         });
       },
 
@@ -154,6 +167,7 @@ export const useGameStore = create<GameState>()(
     {
       name: 'charmdojo-game-state',
       // Only persist essential data
+      // NOTE: isWonThisSession is deliberately NOT persisted - it should reset on page reload
       partialize: (state) => ({
         roundId: state.roundId,
         girl: state.girl,
@@ -162,6 +176,7 @@ export const useGameStore = create<GameState>()(
         gameStatus: state.gameStatus,
         failReason: state.failReason,
         hasHydrated: state.hasHydrated,
+        // isWonThisSession: NOT persisted - defaults to false on reload
       }),
     }
   )

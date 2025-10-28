@@ -16,6 +16,7 @@ export function useGame() {
   const messages = useGameStore((state) => state.messages);
   const gameStatus = useGameStore((state) => state.gameStatus);
   const failReason = useGameStore((state) => state.failReason);
+  const isWonThisSession = useGameStore((state) => state.isWonThisSession);
   const isLoading = useGameStore((state) => state.isLoading);
   const error = useGameStore((state) => state.error);
 
@@ -25,6 +26,7 @@ export function useGame() {
   const addMessages = useGameStore((state) => state.addMessages);
   const addOptimisticMessage = useGameStore((state) => state.addOptimisticMessage);
   const removeOptimisticMessage = useGameStore((state) => state.removeOptimisticMessage);
+  const updateMessageStatus = useGameStore((state) => state.updateMessageStatus);
   const setGameStatus = useGameStore((state) => state.setGameStatus);
   const setLoading = useGameStore((state) => state.setLoading);
   const setError = useGameStore((state) => state.setError);
@@ -41,6 +43,7 @@ export function useGame() {
     messages,
     gameStatus,
     failReason,
+    isWonThisSession,
     isLoading,
     error,
 
@@ -50,6 +53,7 @@ export function useGame() {
     addMessages,
     addOptimisticMessage,
     removeOptimisticMessage,
+    updateMessageStatus,
     setGameStatus,
     setLoading,
     setError,

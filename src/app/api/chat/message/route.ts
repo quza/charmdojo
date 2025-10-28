@@ -17,6 +17,36 @@ import {
   ChatMessage,
 } from '@/types/chat';
 
+/**
+ * Check if a message is a generic opener that should result in ghosting
+ */
+function checkGenericOpener(message: string): boolean {
+  const trimmed = message.toLowerCase().trim().replace(/[?!.]+$/g, '');
+  
+  const genericOpeners = [
+    'hi', 'hey', 'hello', 'sup', 'yo', 'heya', 'hiya',
+    'whats up', "what's up", 'wassup', 'whatsup', 'wazzup',
+    'how are you', 'hows it going', "how's it going",
+    'hru', 'wyd', 'hey there', 'hi there', 'hello there'
+  ];
+  
+  // Check if message is ONLY a generic opener with nothing else
+  if (genericOpeners.includes(trimmed)) return true;
+  
+  // Check if message is very short and starts with generic opener
+  if (trimmed.length < 15) {
+    for (const opener of genericOpeners) {
+      if (trimmed.startsWith(opener)) {
+        const remainder = trimmed.slice(opener.length).trim();
+        // If nothing meaningful after opener, it's generic
+        if (remainder.length < 3) return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Parse request body
@@ -89,6 +119,58 @@ export async function POST(request: NextRequest) {
 
     // Get current meter value (use final_meter if set, otherwise initial_meter)
     const currentMeter = round.final_meter ?? round.initial_meter;
+
+    // 🎮 CHECK FOR GENERIC OPENER GHOSTING (first message only)
+    if (round.message_count === 0) {
+      const isGenericOpener = checkGenericOpener(trimmedMessage);
+      
+      if (isGenericOpener) {
+        console.log('👻 Generic opener detected - User gets ghosted');
+        
+        const userMessageTimestamp = new Date().toISOString();
+        
+        // Save user message
+        await supabase.from('messages').insert({
+          round_id: roundId,
+          role: 'user',
+          content: trimmedMessage,
+          success_delta: -20,
+          meter_after: 0,
+          category: 'bad',
+          reasoning: 'Generic opener - ghosted',
+          is_instant_fail: true,
+          fail_reason: 'You got ghosted...',
+          created_at: userMessageTimestamp,
+        });
+        
+        // Update round to lost
+        await supabase.from('game_rounds').update({
+          result: 'lose',
+          final_meter: 0,
+          message_count: 1,
+          completed_at: new Date().toISOString(),
+        }).eq('id', roundId);
+        
+        // Return ghosted response (no AI message!)
+        return NextResponse.json<ChatMessageResponse>({
+          userMessage: {
+            id: 'user-ghosted',
+            content: trimmedMessage,
+            timestamp: userMessageTimestamp,
+            role: 'user',
+          },
+          aiResponse: null,
+          successMeter: { 
+            previous: currentMeter, 
+            delta: -20, 
+            current: 0, 
+            category: 'bad' 
+          },
+          gameStatus: 'lost',
+          ghosted: true,
+        });
+      }
+    }
 
     // 🎮 CHEAT CODE: AEZAKMI - Instant Win
     if (trimmedMessage.toUpperCase() === 'AEZAKMI') {
@@ -343,26 +425,36 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    // Save AI response
-    const { data: aiMessageData } = await supabase
-      .from('messages')
-      .insert({
-        round_id: roundId,
-        role: 'assistant',
-        content: aiOutput.response,
-        success_delta: null,
-        meter_after: newMeter,
-        category: null,
-        reasoning: null,
-        is_instant_fail: false,
-      })
-      .select()
-      .single();
+    // Save AI response(s) - handle multiple messages for double texting
+    const aiResponses = aiOutput.multipleMessages || [aiOutput.response];
+    const aiMessageDataArray: any[] = [];
+
+    for (let i = 0; i < aiResponses.length; i++) {
+      const { data: aiMessageData } = await supabase
+        .from('messages')
+        .insert({
+          round_id: roundId,
+          role: 'assistant',
+          content: aiResponses[i],
+          success_delta: null,
+          meter_after: newMeter,
+          category: null,
+          reasoning: null,
+          is_instant_fail: false,
+          created_at: new Date(Date.now() + 1000 + (i * 500)).toISOString(), // Stagger by 500ms
+        })
+        .select()
+        .single();
+      
+      if (aiMessageData) {
+        aiMessageDataArray.push(aiMessageData);
+      }
+    }
 
     // STEP 5: Update round with new meter and message count
     const updateData: any = {
       final_meter: newMeter,
-      message_count: round.message_count + 2, // +2 for user and AI messages
+      message_count: round.message_count + 1 + aiResponses.length, // +1 for user + number of AI messages
     };
 
     // If game ended, update result and completion time
@@ -464,7 +556,7 @@ export async function POST(request: NextRequest) {
         role: 'user',
       },
       aiResponse: {
-        id: aiMessageData?.id || 'temp',
+        id: aiMessageDataArray[0]?.id || 'temp',
         content: aiOutput.response,
         timestamp: aiMessageTimestamp,
         role: 'assistant',
@@ -476,6 +568,8 @@ export async function POST(request: NextRequest) {
         category: aiOutput.category,
       },
       gameStatus,
+      disengaged: aiOutput.disengaged,
+      multipleMessages: aiOutput.multipleMessages,
     };
 
     return NextResponse.json<ChatMessageResponse>(response, { status: 200 });

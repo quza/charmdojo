@@ -27,6 +27,7 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
     messages,
     currentMeter,
     gameStatus,
+    isWonThisSession,
     isLoading,
     error,
     initializeRound,
@@ -34,6 +35,7 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
     removeOptimisticMessage,
     addMessages,
     updateSuccessMeter,
+    updateMessageStatus,
     setGameStatus,
     setLoading,
     setError,
@@ -59,28 +61,63 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
       role: 'user',
       content,
       timestamp: new Date().toISOString(),
+      status: 'sending',
     };
     
     addOptimisticMessage(userMessage);
-    setLoading(true);
+    
+    const startTime = Date.now();
+    
+    // Start API call immediately (AI generates in background)
+    const apiPromise = fetch('/api/chat/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        roundId,
+        message: content,
+        conversationHistory: messages.map(m => ({
+          role: m.role,
+          content: m.content,
+        })),
+      }),
+    });
+    
+    // Schedule "Read" indicator after 1 second
+    setTimeout(() => {
+      updateMessageStatus(userMessage.id, 'read');
+    }, 1000);
+    
+    // Schedule typing indicator after 2 seconds
+    setTimeout(() => {
+      setLoading(true);
+    }, 2000);
     
     try {
-      // Call the chat API
-      const response = await fetch('/api/chat/message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roundId,
-          message: content,
-          conversationHistory: messages.map(m => ({
-            role: m.role,
-            content: m.content,
-          })),
-        }),
-      });
+      const response = await apiPromise;
+      
+      // Calculate elapsed time
+      const elapsed = Date.now() - startTime;
+      const minDelay = 3000; // 3 seconds total minimum
+      
+      // Wait for remaining time if response came too quickly
+      if (elapsed < minDelay) {
+        await new Promise(resolve => setTimeout(resolve, minDelay - elapsed));
+      }
       
       if (!response.ok) {
         const data = await response.json();
+        
+        // Handle ghosting
+        if (data.ghosted) {
+          removeOptimisticMessage(userMessage.id);
+          if (data.userMessage) {
+            addOptimisticMessage(data.userMessage);
+          }
+          updateSuccessMeter(data.successMeter?.delta || -currentMeter, 0);
+          setGameStatus('lost', 'You got ghosted...');
+          setLoading(false);
+          return;
+        }
         
         // Handle instant fail (403)
         if (response.status === 403) {
@@ -104,18 +141,49 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
       
       const data: ChatMessageResponse = await response.json();
       
-      // Remove optimistic message and add actual messages
-      removeOptimisticMessage(userMessage.id);
-      addMessages(data.userMessage, data.aiResponse);
+      // Handle ghosting in successful responses
+      if (data.ghosted) {
+        removeOptimisticMessage(userMessage.id);
+        addOptimisticMessage(data.userMessage);
+        updateSuccessMeter(data.successMeter.delta, 0);
+        setGameStatus('lost', 'You got ghosted...');
+        setLoading(false);
+        return;
+      }
       
-      // Update success meter
-      updateSuccessMeter(data.successMeter.delta, data.successMeter.current);
-      
-      // Check game status
-      if (data.gameStatus === 'won') {
-        setGameStatus('won');
-      } else if (data.gameStatus === 'lost') {
-        setGameStatus('lost', 'Success meter dropped too low');
+      // Handle normal responses (check if aiResponse exists)
+      if (data.aiResponse) {
+        removeOptimisticMessage(userMessage.id);
+        
+        // If multiple messages, add them all with stagger
+        if (data.multipleMessages && data.multipleMessages.length > 1) {
+          addMessages(data.userMessage, data.aiResponse);
+          
+          // Add follow-up messages after a delay
+          for (let i = 1; i < data.multipleMessages.length; i++) {
+            setTimeout(() => {
+              const followUpMessage: Message = {
+                id: `followup_${Date.now()}_${i}`,
+                role: 'assistant',
+                content: data.multipleMessages![i],
+                timestamp: new Date().toISOString(),
+              };
+              addOptimisticMessage(followUpMessage);
+            }, i * 800); // 800ms between each follow-up
+          }
+        } else {
+          addMessages(data.userMessage, data.aiResponse);
+        }
+        
+        // Update success meter
+        updateSuccessMeter(data.successMeter.delta, data.successMeter.current);
+        
+        // Check game status
+        if (data.gameStatus === 'won') {
+          setGameStatus('won');
+        } else if (data.gameStatus === 'lost') {
+          setGameStatus('lost', 'Success meter dropped too low');
+        }
       }
       
       setLoading(false);
@@ -197,8 +265,8 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
           </>
           )}
           
-          {/* Victory Overlay - render as normal flow element when won */}
-          {gameStatus === 'won' && (
+          {/* Victory Overlay - only render if won in THIS session (not from persisted state) */}
+          {gameStatus === 'won' && isWonThisSession && (
             <VictoryOverlay roundId={roundId} />
           )}
         </div>

@@ -42,10 +42,64 @@ function loadEvaluationPrompt(): string {
 }
 
 /**
+ * Calculate conversation momentum based on recent messages and meter
+ */
+function calculateConversationMomentum(
+  conversationHistory: Array<{ role: string; content: string }>,
+  currentMeter: number
+): 'positive' | 'neutral' | 'negative' {
+  // Look at last 3 exchanges (6 messages)
+  const recentMessages = conversationHistory.slice(-6);
+  
+  // If too early in conversation, default to neutral
+  if (recentMessages.length < 4) return 'neutral';
+  
+  // Analyze meter trend (use current meter as proxy)
+  if (currentMeter < 25) return 'negative';
+  if (currentMeter > 60) return 'positive';
+  
+  // Analyze sentiment/length of girl's recent responses
+  const girlMessages = recentMessages.filter(m => m.role === 'assistant');
+  if (girlMessages.length > 0) {
+    const avgLength = girlMessages.reduce((sum, m) => sum + m.content.length, 0) / girlMessages.length;
+    
+    if (avgLength < 20) return 'negative'; // Short responses = low interest
+    if (avgLength > 80) return 'positive'; // Long responses = high interest
+  }
+  
+  return 'neutral';
+}
+
+/**
+ * Detect if user mentions other girls or competition
+ */
+function detectCompetitionMention(message: string): boolean {
+  const lowerMessage = message.toLowerCase();
+  const competitionKeywords = [
+    'other girl', 'other match', 'another girl', 'another match',
+    'other girls', 'talking to', 'seeing someone', 'dating someone',
+    'my ex', 'another date', 'other dates'
+  ];
+  
+  return competitionKeywords.some(keyword => lowerMessage.includes(keyword));
+}
+
+/**
  * Build system prompt for message evaluation
  */
-function buildEvaluationSystemPrompt(context: ConversationContext): string {
+function buildEvaluationSystemPrompt(
+  context: ConversationContext,
+  conversationHistory: Array<{ role: string; content: string }>
+): string {
   const basePrompt = loadEvaluationPrompt();
+  
+  const momentum = calculateConversationMomentum(conversationHistory, context.currentMeter);
+  
+  const moodContext = momentum === 'negative'
+    ? "MOOD: The conversation has been declining. The girl is getting annoyed and has LESS patience for mistakes. Be stricter in evaluation."
+    : momentum === 'positive'
+    ? "MOOD: The conversation has been going well. The girl is in a good mood and slightly MORE forgiving of minor missteps."
+    : "MOOD: The conversation has been steady. Maintain standard evaluation.";
 
   const contextInfo = `
 ## Current Conversation Context:
@@ -62,6 +116,7 @@ function buildEvaluationSystemPrompt(context: ConversationContext): string {
       ? 'High - maintain standards'
       : 'Medium - standard evaluation'
   }
+- **${moodContext}**
 
 ${context.girlDescription ? `## Girl's Appearance Context:\n${context.girlDescription}\n` : ''}
 
@@ -108,7 +163,15 @@ export async function analyzeMessageQuality(
 ): Promise<MessageAnalysisResult> {
   const openai = getOpenAIClient();
 
-  const systemPrompt = buildEvaluationSystemPrompt(params.context);
+  // Check for competition mention
+  const mentionsCompetition = detectCompetitionMention(params.userMessage);
+  
+  // Build system prompt with jealousy context if needed
+  let systemPrompt = buildEvaluationSystemPrompt(params.context, params.conversationHistory);
+  
+  if (mentionsCompetition) {
+    systemPrompt += `\n\nIMPORTANT: The user just mentioned other girls/matches. This is generally a turn-off for most women on dating apps. Penalize this moderately (-3 to -5) unless it's a thoughtful breakup story or very high meter (70+) where it might be acceptable.`;
+  }
 
   // Prepare conversation history (last 10 messages for context)
   const recentHistory = params.conversationHistory.slice(-10);

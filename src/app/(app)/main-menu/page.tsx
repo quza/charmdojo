@@ -66,12 +66,22 @@ export default function MainMenuPage() {
 
     setStatsLoading(true);
     try {
+      console.log('Fetching stats from: /api/user/stats');
+      
       const response = await fetch('/api/user/stats', {
-        cache: 'no-store',
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin',
       });
       
+      console.log('Stats response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch stats');
+        const errorText = await response.text();
+        console.error('Stats fetch failed:', response.status, errorText);
+        throw new Error(`Failed to fetch stats: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
@@ -81,6 +91,14 @@ export default function MainMenuPage() {
       console.log('Stats fetched and cached');
     } catch (error) {
       console.error('Error fetching stats:', error);
+      // Log more details about the error
+      if (error instanceof TypeError) {
+        console.error('TypeError details:', {
+          message: error.message,
+          name: error.name,
+          stack: error.stack,
+        });
+      }
       // Keep default stats (all zeros) on error
     } finally {
       setStatsLoading(false);
@@ -109,12 +127,22 @@ export default function MainMenuPage() {
         ? '/api/user/achievements?checkNew=true' 
         : '/api/user/achievements?checkNew=false';
       
+      console.log('Fetching achievements from:', url);
+      
       const response = await fetch(url, {
-        cache: 'no-store',
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin',
       });
       
+      console.log('Achievements response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch achievements');
+        const errorText = await response.text();
+        console.error('Achievements fetch failed:', response.status, errorText);
+        throw new Error(`Failed to fetch achievements: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
@@ -132,6 +160,14 @@ export default function MainMenuPage() {
       }
     } catch (error) {
       console.error('Error fetching achievements:', error);
+      // Log more details about the error
+      if (error instanceof TypeError) {
+        console.error('TypeError details:', {
+          message: error.message,
+          name: error.name,
+          stack: error.stack,
+        });
+      }
     } finally {
       setAchievementsLoading(false);
     }

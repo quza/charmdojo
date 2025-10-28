@@ -410,6 +410,8 @@ async function cacheRewardsToProfile(
 
 /**
  * Save reward data to rewards table for historical tracking
+ * Uses upsert to handle race conditions where multiple reward generation
+ * processes might try to save the same reward simultaneously
  * 
  * @param roundId - UUID of the game round
  * @param rewardData - Reward data to save
@@ -421,13 +423,21 @@ async function saveRewardToHistory(
   console.log(`📝 Saving reward to history for round ${roundId}...`);
   
   const supabase = createServiceRoleClient();
-  const { error } = await supabase.from('rewards').insert({
-    round_id: roundId,
-    reward_text: rewardData.rewardText,
-    reward_voice_url: rewardData.rewardVoiceUrl,
-    reward_image_url: rewardData.rewardImageUrl,
-    generation_time: rewardData.generationTime,
-  });
+  const { error } = await supabase
+    .from('rewards')
+    .upsert(
+      {
+        round_id: roundId,
+        reward_text: rewardData.rewardText,
+        reward_voice_url: rewardData.rewardVoiceUrl,
+        reward_image_url: rewardData.rewardImageUrl,
+        generation_time: rewardData.generationTime,
+      },
+      {
+        onConflict: 'round_id',
+        ignoreDuplicates: false, // Update if exists (shouldn't happen, but safe)
+      }
+    );
 
   if (error) {
     console.error('   ❌ Error saving reward to history:', error);

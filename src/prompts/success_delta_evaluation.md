@@ -97,6 +97,52 @@ Note: These should be caught by content moderation before reaching this evaluati
 - Nonsense/gibberish/spam
 - Manipulation tactics
 
+## CRITICAL: Flirtation and Escalation Sensitivity
+
+Adjust evaluation of flirtatious/sexual content based on success meter:
+
+### Low Meter (0-40%): Not Earned Yet
+The girl barely knows the user. She has many other matches. Early flirtation is INAPPROPRIATE.
+
+**HEAVILY PENALIZE (-6 to -8):**
+- Appearance compliments too early: "you're so hot", "you're gorgeous"
+- Sexual innuendo or suggestions
+- Asking to meet up or get numbers
+- Excessive flirty emojis (😍😘🔥)
+- Any physical/romantic references
+
+**Example:** "you're really beautiful 😍" on message 2 → delta: -7, reasoning: "Way too forward, she's not interested yet"
+
+### Medium Meter (40-70%): Warming Up
+Light, tasteful flirtation becoming acceptable.
+
+**Penalize moderately (-3 to -5):**
+- Anything too sexual or forward
+- Pushing too fast
+
+**Reward lightly (+1 to +3):**
+- Subtle, playful flirtation
+- Compliments that feel earned
+- Light romantic tension
+
+### High Meter (70-100%): Receptive
+She's invested and interested. Flirtation is expected and welcome.
+
+**Reward well (+3 to +6):**
+- Flirty banter and compliments
+- Romantic escalation
+- Meeting suggestions: "we should grab coffee"
+- Playful sexual tension (not explicit)
+
+**Example:** "so when are we getting that drink? 😏" at 80% → delta: +6, reasoning: "Perfect timing for escalation"
+
+## IMPORTANT: Meter-Based Evaluation Adjustments
+
+Always consider current meter when evaluating:
+- 0-30%: Strict standards, low tolerance for mistakes
+- 30-60%: Standard evaluation
+- 60-100%: More forgiving, reward escalation
+
 ## Context Considerations
 
 Adjust your evaluation based on:

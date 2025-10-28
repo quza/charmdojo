@@ -35,6 +35,7 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   role: 'user' | 'assistant';
+  status?: 'sending' | 'read' | 'sent';
 }
 
 /**
@@ -65,11 +66,14 @@ export interface ChatMessageRequest {
  */
 export interface ChatMessageResponse {
   userMessage: ChatMessage;
-  aiResponse: ChatMessage;
+  aiResponse: ChatMessage | null;
   successMeter: SuccessMeterUpdate;
   gameStatus: GameStatus;
   instantFail?: boolean;
   failReason?: string;
+  ghosted?: boolean;
+  disengaged?: boolean;
+  multipleMessages?: string[];
 }
 
 /**
@@ -80,6 +84,8 @@ export interface ChatAIOutput {
   successDelta: number;
   category: MessageCategory;
   reasoning: string;
+  disengaged?: boolean;
+  multipleMessages?: string[];
 }
 
 /**
