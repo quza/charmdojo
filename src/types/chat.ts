@@ -74,6 +74,10 @@ export interface ChatMessageResponse {
   ghosted?: boolean;
   disengaged?: boolean;
   multipleMessages?: string[];
+  // XP information (for floating bubble animation)
+  xpGained?: number;
+  currentXp?: number;
+  currentLevel?: number;
 }
 
 /**

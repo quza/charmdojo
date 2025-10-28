@@ -57,9 +57,15 @@ export type Database = {
           initial_meter: number
           is_abandoned: boolean
           message_count: number
+          message_xp_sum: number
           result: string | null
           started_at: string
+          streak_multiplier: number | null
           user_id: string
+          win_xp: number | null
+          xp_after_round: number | null
+          xp_before_round: number | null
+          xp_gained: number
         }
         Insert: {
           completed_at?: string | null
@@ -73,9 +79,15 @@ export type Database = {
           initial_meter?: number
           is_abandoned?: boolean
           message_count?: number
+          message_xp_sum?: number
           result?: string | null
           started_at?: string
+          streak_multiplier?: number | null
           user_id: string
+          win_xp?: number | null
+          xp_after_round?: number | null
+          xp_before_round?: number | null
+          xp_gained?: number
         }
         Update: {
           completed_at?: string | null
@@ -89,9 +101,15 @@ export type Database = {
           initial_meter?: number
           is_abandoned?: boolean
           message_count?: number
+          message_xp_sum?: number
           result?: string | null
           started_at?: string
+          streak_multiplier?: number | null
           user_id?: string
+          win_xp?: number | null
+          xp_after_round?: number | null
+          xp_before_round?: number | null
+          xp_gained?: number
         }
         Relationships: [
           {
@@ -189,6 +207,7 @@ export type Database = {
           role: string
           round_id: string
           success_delta: number | null
+          xp_gained: number | null
         }
         Insert: {
           category?: string | null
@@ -202,6 +221,7 @@ export type Database = {
           role: string
           round_id: string
           success_delta?: number | null
+          xp_gained?: number | null
         }
         Update: {
           category?: string | null
@@ -215,6 +235,7 @@ export type Database = {
           role?: string
           round_id?: string
           success_delta?: number | null
+          xp_gained?: number | null
         }
         Relationships: [
           {
@@ -362,11 +383,14 @@ export type Database = {
           display_rewards: boolean
           email: string
           id: string
+          level: number
           name: string | null
+          show_on_leaderboard: boolean
           total_achievements: number
           total_losses: number
           total_rounds: number
           total_wins: number
+          total_xp: number
           updated_at: string
         }
         Insert: {
@@ -377,11 +401,14 @@ export type Database = {
           display_rewards?: boolean
           email: string
           id: string
+          level?: number
           name?: string | null
+          show_on_leaderboard?: boolean
           total_achievements?: number
           total_losses?: number
           total_rounds?: number
           total_wins?: number
+          total_xp?: number
           updated_at?: string
         }
         Update: {
@@ -392,11 +419,14 @@ export type Database = {
           display_rewards?: boolean
           email?: string
           id?: string
+          level?: number
           name?: string | null
+          show_on_leaderboard?: boolean
           total_achievements?: number
           total_losses?: number
           total_rounds?: number
           total_wins?: number
+          total_xp?: number
           updated_at?: string
         }
         Relationships: []
@@ -406,7 +436,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_girl_pool_size: { Args: Record<string, never>; Returns: number }
+      get_girl_pool_size: { Args: never; Returns: number }
       get_random_girls: {
         Args: { count?: number }
         Returns: {
@@ -430,6 +460,12 @@ export type Database = {
           source: string
           use_count: number
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "girl_profiles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_user_stats: {
         Args: { user_uuid: string }

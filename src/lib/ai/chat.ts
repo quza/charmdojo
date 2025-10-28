@@ -326,7 +326,12 @@ export async function generateChatResponse(
   } catch (error: any) {
     console.error('Error generating chat response:', error);
 
-    // Return a safe fallback response
+    // Check if it's a quota/billing issue
+    if (error.status === 429 || error.code === 'insufficient_quota') {
+      throw new Error(`QUOTA_EXCEEDED: ${error.message}`);
+    }
+
+    // Return a safe fallback response for other errors
     throw new Error(`Failed to generate AI response: ${error.message}`);
   }
 }

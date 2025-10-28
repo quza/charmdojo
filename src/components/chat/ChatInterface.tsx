@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChatHeader } from './ChatHeader';
 import { MessageBubble } from './MessageBubble';
@@ -8,6 +8,7 @@ import { MessageInput } from './MessageInput';
 import { SuccessMeter } from './SuccessMeter';
 import { GameOverOverlay } from './GameOverOverlay';
 import { VictoryOverlay } from './VictoryOverlay';
+import { FloatingXpBubble } from '@/components/game/FloatingXpBubble';
 import { Message, GirlProfile, ChatMessageResponse } from '@/types/chat';
 import { useGame } from '@/hooks/useGame';
 
@@ -21,6 +22,9 @@ interface ChatInterfaceProps {
 export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: ChatInterfaceProps) {
   const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // XP bubble state
+  const [xpBubbles, setXpBubbles] = useState<Array<{ id: string; xp: number }>>([]);
   
   // Use game store instead of local state
   const {
@@ -136,6 +140,14 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
           return;
         }
         
+        // Handle quota exceeded (429)
+        if (response.status === 429) {
+          removeOptimisticMessage(userMessage.id);
+          toast.error(data.error || 'AI quota exceeded. Please check your OpenAI billing.');
+          setLoading(false);
+          return;
+        }
+        
         throw new Error(data.error || 'Failed to send message');
       }
       
@@ -177,6 +189,12 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
         
         // Update success meter
         updateSuccessMeter(data.successMeter.delta, data.successMeter.current);
+        
+        // Show XP bubble if XP was gained
+        if (data.xpGained && data.xpGained > 0) {
+          const bubbleId = `xp_${Date.now()}`;
+          setXpBubbles(prev => [...prev, { id: bubbleId, xp: data.xpGained! }]);
+        }
         
         // Check game status
         if (data.gameStatus === 'won') {
@@ -271,6 +289,17 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
           )}
         </div>
         </div>
+        
+        {/* Floating XP Bubbles */}
+        {xpBubbles.map(bubble => (
+          <FloatingXpBubble
+            key={bubble.id}
+            xp={bubble.xp}
+            onComplete={() => {
+              setXpBubbles(prev => prev.filter(b => b.id !== bubble.id));
+            }}
+          />
+        ))}
       </div>
     </div>
   );

@@ -16,6 +16,13 @@ import {
   ChatMessageResponse,
   ChatMessage,
 } from '@/types/chat';
+import {
+  calculateMessageXp,
+  calculateWinXp,
+  getStreakMultiplier,
+  calculateRoundTotalXp,
+  levelForXp,
+} from '@/lib/game/xp-system';
 
 /**
  * Check if a message is a generic opener that should result in ghosting
@@ -405,6 +412,62 @@ export async function POST(request: NextRequest) {
 
     console.log(`📊 Meter update: ${currentMeter}% → ${newMeter}% (${aiOutput.successDelta > 0 ? '+' : ''}${aiOutput.successDelta})`)
 
+    // STEP 3.5: Calculate and award message XP (if delta > 0)
+    let messageXp = 0;
+    let userCurrentXp = 0;
+    let userCurrentLevel = 1;
+
+    if (aiOutput.successDelta > 0) {
+      // Fetch user's current XP and level
+      const { data: userData, error: userFetchError } = await supabase
+        .from('users')
+        .select('level, total_xp')
+        .eq('id', user.id)
+        .single();
+
+      if (userFetchError) {
+        console.error('Failed to fetch user XP data:', userFetchError);
+      } else if (userData) {
+        userCurrentLevel = userData.level || 1;
+        userCurrentXp = userData.total_xp || 0;
+
+        // Calculate message XP
+        messageXp = calculateMessageXp(aiOutput.successDelta, userCurrentLevel);
+        const newTotalXp = userCurrentXp + messageXp;
+        const newLevel = levelForXp(newTotalXp);
+
+        console.log(`✨ Message XP awarded: +${messageXp} XP (L${userCurrentLevel} → L${newLevel}, ${userCurrentXp} → ${newTotalXp} XP)`);
+
+        // Update user's XP and level
+        const { error: xpUpdateError } = await supabase
+          .from('users')
+          .update({
+            total_xp: newTotalXp,
+            level: newLevel,
+          })
+          .eq('id', user.id);
+
+        if (xpUpdateError) {
+          console.error('Failed to update user XP:', xpUpdateError);
+        } else {
+          userCurrentXp = newTotalXp;
+          userCurrentLevel = newLevel;
+
+          // Update message_xp_sum in game_rounds
+          const { error: roundXpError } = await supabase
+            .from('game_rounds')
+            .update({
+              message_xp_sum: (round.message_xp_sum || 0) + messageXp,
+            })
+            .eq('id', roundId);
+
+          if (roundXpError) {
+            console.error('Failed to update round message_xp_sum:', roundXpError);
+          }
+        }
+      }
+    }
+
     // STEP 4: Save messages to database
     const userMessageTimestamp = new Date().toISOString();
     const aiMessageTimestamp = new Date(Date.now() + 1000).toISOString(); // 1 second after user
@@ -421,6 +484,7 @@ export async function POST(request: NextRequest) {
         category: aiOutput.category,
         reasoning: aiOutput.reasoning,
         is_instant_fail: false,
+        xp_gained: messageXp > 0 ? messageXp : null, // Store XP if awarded
       })
       .select()
       .single();
@@ -492,13 +556,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // STEP 5.5: Update user statistics when game ends
+    // STEP 5.5: Update user statistics and award win XP when game ends
     if (gameStatus !== 'active') {
       try {
-        // Fetch current user stats
+        // Fetch current user stats and XP
         const { data: currentUser, error: fetchError } = await supabase
           .from('users')
-          .select('total_rounds, total_wins, total_losses, current_streak, best_streak')
+          .select('total_rounds, total_wins, total_losses, current_streak, best_streak, level, total_xp')
           .eq('id', user.id)
           .single();
 
@@ -511,6 +575,78 @@ export async function POST(request: NextRequest) {
           let newCurrentStreak = isWin ? currentUser.current_streak + 1 : 0;
           let newBestStreak = Math.max(currentUser.best_streak, newCurrentStreak);
 
+          // Handle win XP and streak multiplier
+          let winXp = 0;
+          let streakMultiplier = 1.0;
+          let endOfRoundBonus = 0;
+          let finalXp = currentUser.total_xp;
+          let finalLevel = currentUser.level;
+
+          if (isWin) {
+            // Get message_xp_sum from round
+            const { data: roundData } = await supabase
+              .from('game_rounds')
+              .select('message_xp_sum')
+              .eq('id', roundId)
+              .single();
+
+            const messageXpSum = roundData?.message_xp_sum || 0;
+
+            // Calculate win XP with current level
+            const currentLevel = currentUser.level || 1;
+            winXp = calculateWinXp(currentLevel);
+
+            // Get streak multiplier (for the new streak after this win)
+            streakMultiplier = getStreakMultiplier(newCurrentStreak);
+
+            // Calculate round total with multiplier
+            const roundBase = messageXpSum + winXp;
+            const roundTotal = calculateRoundTotalXp(messageXpSum, winXp, streakMultiplier);
+            endOfRoundBonus = roundTotal - messageXpSum; // Already awarded message XP during game
+
+            // Award end-of-round bonus
+            finalXp = currentUser.total_xp + endOfRoundBonus;
+            finalLevel = levelForXp(finalXp);
+
+            console.log(`🏆 Win XP breakdown:`);
+            console.log(`   Message XP: ${messageXpSum}`);
+            console.log(`   Win XP: ${winXp}`);
+            console.log(`   Streak: ${newCurrentStreak}x (${streakMultiplier.toFixed(1)}x multiplier)`);
+            console.log(`   Round total: ${roundTotal} (base: ${roundBase})`);
+            console.log(`   End-of-round bonus: +${endOfRoundBonus} XP`);
+            console.log(`   Final: L${currentLevel} → L${finalLevel}, ${currentUser.total_xp} → ${finalXp} XP`);
+
+            // Update game_rounds with XP info
+            await supabase
+              .from('game_rounds')
+              .update({
+                win_xp: winXp,
+                streak_multiplier: streakMultiplier,
+                xp_gained: roundTotal,
+                xp_after_round: finalXp,
+              })
+              .eq('id', roundId);
+          } else {
+            // Loss: update game_rounds with just message XP (no win bonus)
+            const { data: roundData } = await supabase
+              .from('game_rounds')
+              .select('message_xp_sum')
+              .eq('id', roundId)
+              .single();
+
+            const messageXpSum = roundData?.message_xp_sum || 0;
+
+            await supabase
+              .from('game_rounds')
+              .update({
+                xp_gained: messageXpSum, // Only message XP
+                xp_after_round: currentUser.total_xp,
+              })
+              .eq('id', roundId);
+
+            console.log(`💀 Loss: No win XP, streak reset. Message XP: ${messageXpSum}`);
+          }
+
           // Update user statistics
           const { error: statsError } = await supabase
             .from('users')
@@ -520,6 +656,8 @@ export async function POST(request: NextRequest) {
               total_losses: isWin ? currentUser.total_losses : currentUser.total_losses + 1,
               current_streak: newCurrentStreak,
               best_streak: newBestStreak,
+              total_xp: finalXp,
+              level: finalLevel,
             })
             .eq('id', user.id);
 
@@ -570,6 +708,10 @@ export async function POST(request: NextRequest) {
       gameStatus,
       disengaged: aiOutput.disengaged,
       multipleMessages: aiOutput.multipleMessages,
+      // XP info for floating bubble animation
+      xpGained: messageXp > 0 ? messageXp : undefined,
+      currentXp: messageXp > 0 ? userCurrentXp : undefined,
+      currentLevel: messageXp > 0 ? userCurrentLevel : undefined,
     };
 
     return NextResponse.json<ChatMessageResponse>(response, { status: 200 });
@@ -585,9 +727,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Handle quota exceeded errors
+    if (error.message?.includes('QUOTA_EXCEEDED')) {
+      return NextResponse.json(
+        { error: 'AI quota exceeded. Please check your OpenAI billing and try again later.' },
+        { status: 429 }
+      );
+    }
+
+    // Handle other AI generation failures
     if (error.message?.includes('Failed to generate AI response')) {
       return NextResponse.json(
-        { error: 'AI service temporarily unavailable' },
+        { error: 'AI service temporarily unavailable. Please try again in a moment.' },
         { status: 503 }
       );
     }

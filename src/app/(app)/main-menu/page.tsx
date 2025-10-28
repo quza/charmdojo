@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { ActionCard } from '@/components/game/ActionCard';
 import { StatsCard } from '@/components/game/StatsCard';
 import { AchievementCard } from '@/components/game/AchievementCard';
+import { XpDisplay } from '@/components/game/XpDisplay';
 import { showAchievementToasts } from '@/components/game/AchievementToast';
 import { useEffect, useState, useCallback } from 'react';
 import { Achievement } from '@/types/achievement';
@@ -30,6 +31,9 @@ interface UserStats {
   currentStreak: number;
   bestStreak: number;
   totalAchievements: number;
+  level: number;
+  totalXp: number;
+  xpToNextLevel: number;
 }
 
 export default function MainMenuPage() {
@@ -43,6 +47,9 @@ export default function MainMenuPage() {
     currentStreak: 0,
     bestStreak: 0,
     totalAchievements: 0,
+    level: 1,
+    totalXp: 0,
+    xpToNextLevel: 0,
   });
   const [statsLoading, setStatsLoading] = useState(true);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
@@ -348,6 +355,12 @@ export default function MainMenuPage() {
             )}
           </div>
         </div>
+
+        {/* XP Display */}
+        {!statsLoading && (
+          <XpDisplay level={stats.level} totalXp={stats.totalXp} />
+        )}
+        
         <Button
           onClick={handleSignOut}
           variant="outline"

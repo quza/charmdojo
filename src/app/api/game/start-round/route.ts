@@ -113,7 +113,28 @@ export async function POST(request: NextRequest) {
     // Step 4: Assign persona (default: playful for now)
     const persona = 'playful';
 
-    // Step 5: Create game round in database
+    // Step 5: Get user's current XP for round tracking
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('total_xp')
+      .eq('id', user.id)
+      .single();
+
+    if (userError) {
+      console.error('❌ Error fetching user XP:', userError);
+      return NextResponse.json(
+        {
+          error: 'database_error',
+          message: 'Failed to fetch user data',
+        },
+        { status: 500 }
+      );
+    }
+
+    const currentXp = userData?.total_xp || 0;
+    console.log(`   User XP at round start: ${currentXp}`);
+
+    // Step 6: Create game round in database
     
     // Only link to girl_profile if girlId is a valid UUID from the pool
     // Temporary generated girls have IDs like "girl_..." or "fallback_..." which aren't UUIDs
@@ -130,6 +151,7 @@ export async function POST(request: NextRequest) {
         girl_profile_id: isFromPool ? girlId : null, // Only link if from pool
         initial_meter: 20,
         message_count: 0,
+        xp_before_round: currentXp, // Track XP at round start
       })
       .select()
       .single();
@@ -148,7 +170,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`✓ Round created: ${round.id}`);
 
-    // Step 6: Build response
+    // Step 7: Build response
     const totalTime = (Date.now() - startTime) / 1000;
     
     const response: StartRoundResponse = {

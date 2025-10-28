@@ -11,6 +11,7 @@ import Image from 'next/image';
 import { useWindowSize } from '@/hooks/useWindowSize';
 import { createClient } from '@/lib/supabase/client';
 import { markShouldRefresh, markShouldRefreshLeaderboard } from '@/lib/utils/stats-cache';
+import { VictoryXpSummary } from '@/components/game/VictoryXpSummary';
 
 // Dynamically import Confetti to reduce initial bundle size
 const Confetti = dynamic(() => import('react-confetti'), {
@@ -527,6 +528,11 @@ export function VictoryOverlay({ roundId }: VictoryOverlayProps) {
             )}
           </>
         )}
+        
+        {/* XP Summary */}
+        <div className="pt-4">
+          <VictoryXpSummary roundId={roundId} />
+        </div>
         
         {/* Action Buttons */}
         <div className="flex flex-col gap-3 pt-4">

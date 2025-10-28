@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { calculateXpInfo } from '@/lib/game/xp-system';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,9 @@ interface UserStats {
   currentStreak: number;
   bestStreak: number;
   totalAchievements: number;
+  level: number;
+  totalXp: number;
+  xpToNextLevel: number;
 }
 
 export async function GET(request: NextRequest) {
@@ -30,7 +34,7 @@ export async function GET(request: NextRequest) {
     // 2. Fetch user statistics from users table
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('total_rounds, total_wins, total_losses, current_streak, best_streak')
+      .select('total_rounds, total_wins, total_losses, current_streak, best_streak, level, total_xp')
       .eq('id', user.id)
       .single();
 
@@ -53,7 +57,11 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching achievement count:', achievementError);
     }
 
-    // 5. Format and return statistics
+    // 5. Calculate XP info
+    const totalXp = userData.total_xp || 0;
+    const xpInfo = calculateXpInfo(totalXp);
+
+    // 6. Format and return statistics
     const stats: UserStats = {
       totalRounds: userData.total_rounds || 0,
       wins: userData.total_wins || 0,
@@ -62,6 +70,9 @@ export async function GET(request: NextRequest) {
       currentStreak: userData.current_streak || 0,
       bestStreak: userData.best_streak || 0,
       totalAchievements: achievementCount || 0,
+      level: xpInfo.level,
+      totalXp: xpInfo.totalXp,
+      xpToNextLevel: xpInfo.xpToNextLevel,
     };
 
     return NextResponse.json(stats);

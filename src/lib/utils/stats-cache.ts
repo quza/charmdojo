@@ -13,6 +13,9 @@ interface UserStats {
   currentStreak: number;
   bestStreak: number;
   totalAchievements: number;
+  level: number;
+  totalXp: number;
+  xpToNextLevel: number;
 }
 
 interface CacheEntry<T> {
