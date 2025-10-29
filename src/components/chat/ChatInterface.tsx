@@ -11,6 +11,7 @@ import { VictoryOverlay } from './VictoryOverlay';
 import { FloatingXpBubble } from '@/components/game/FloatingXpBubble';
 import { Message, GirlProfile, ChatMessageResponse } from '@/types/chat';
 import { useGame } from '@/hooks/useGame';
+import { playComboIncreaseSound, playComboBreakSound, initAudioContext } from '@/lib/audio/soundEffects';
 
 interface ChatInterfaceProps {
   roundId: string;
@@ -39,11 +40,17 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
     removeOptimisticMessage,
     addMessages,
     updateSuccessMeter,
+    updateCombo,
     updateMessageStatus,
     setGameStatus,
     setLoading,
     setError,
   } = useGame();
+  
+  // Initialize audio context on first mount
+  useEffect(() => {
+    initAudioContext();
+  }, []);
   
   // Initialize round data on mount
   useEffect(() => {
@@ -189,6 +196,21 @@ export function ChatInterface({ roundId, girl, initialMessages, initialMeter }: 
         
         // Update success meter
         updateSuccessMeter(data.successMeter.delta, data.successMeter.current);
+        
+        // Update combo and play sound effects
+        if (data.comboInfo) {
+          const { currentCombo, didAdvance, didBreak } = data.comboInfo;
+          
+          // Update combo state
+          updateCombo(currentCombo, didAdvance);
+          
+          // Play appropriate sound
+          if (didBreak) {
+            playComboBreakSound();
+          } else if (didAdvance) {
+            playComboIncreaseSound(currentCombo);
+          }
+        }
         
         // Show XP bubble if XP was gained
         if (data.xpGained && data.xpGained > 0) {

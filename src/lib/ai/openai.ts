@@ -221,7 +221,7 @@ export async function generateGirlDescriptionWithFallback(
   try {
     // Add a small delay to allow CDN propagation for newly uploaded images
     // This prevents OpenAI from trying to fetch before the image is available
-    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+    await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
     
     // Attempt Vision API first
     const description = await generateGirlDescription(imageUrl);

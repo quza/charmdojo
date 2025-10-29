@@ -247,6 +247,39 @@ export type Database = {
           },
         ]
       }
+      pinned_rounds: {
+        Row: {
+          user_id: string
+          round_id: string
+          pinned_at: string
+        }
+        Insert: {
+          user_id: string
+          round_id: string
+          pinned_at?: string
+        }
+        Update: {
+          user_id?: string
+          round_id?: string
+          pinned_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pinned_rounds_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pinned_rounds_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "game_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rewards: {
         Row: {
           created_at: string

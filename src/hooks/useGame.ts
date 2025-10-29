@@ -13,6 +13,9 @@ export function useGame() {
   const currentMeter = useGameStore((state) => state.currentMeter);
   const lastDelta = useGameStore((state) => state.lastDelta);
   const showDelta = useGameStore((state) => state.showDelta);
+  const currentCombo = useGameStore((state) => state.currentCombo);
+  const highestCombo = useGameStore((state) => state.highestCombo);
+  const lastComboChange = useGameStore((state) => state.lastComboChange);
   const messages = useGameStore((state) => state.messages);
   const gameStatus = useGameStore((state) => state.gameStatus);
   const failReason = useGameStore((state) => state.failReason);
@@ -23,6 +26,9 @@ export function useGame() {
   // Action selectors
   const initializeRound = useGameStore((state) => state.initializeRound);
   const updateSuccessMeter = useGameStore((state) => state.updateSuccessMeter);
+  const updateCombo = useGameStore((state) => state.updateCombo);
+  const resetCombo = useGameStore((state) => state.resetCombo);
+  const clearComboAnimation = useGameStore((state) => state.clearComboAnimation);
   const addMessages = useGameStore((state) => state.addMessages);
   const addOptimisticMessage = useGameStore((state) => state.addOptimisticMessage);
   const removeOptimisticMessage = useGameStore((state) => state.removeOptimisticMessage);
@@ -40,6 +46,9 @@ export function useGame() {
     currentMeter,
     lastDelta,
     showDelta,
+    currentCombo,
+    highestCombo,
+    lastComboChange,
     messages,
     gameStatus,
     failReason,
@@ -50,6 +59,9 @@ export function useGame() {
     // Actions
     initializeRound,
     updateSuccessMeter,
+    updateCombo,
+    resetCombo,
+    clearComboAnimation,
     addMessages,
     addOptimisticMessage,
     removeOptimisticMessage,

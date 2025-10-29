@@ -225,28 +225,20 @@ export default function MainMenuPage() {
       const urlParams = new URLSearchParams(window.location.search);
       const hasRefreshParam = urlParams.has('refresh');
       
-      // Check if we should refresh (e.g., after sign-in or game completion)
-      const shouldRefresh = checkAndClearRefreshFlag() || hasRefreshParam;
-      
       // Clean up URL if refresh param was present
       if (hasRefreshParam) {
-        // Mark for refresh and clean URL
-        markShouldRefresh();
         window.history.replaceState({}, '', window.location.pathname);
       }
       
-      if (shouldRefresh) {
-        console.log('Refresh flag detected - fetching fresh data with achievement checks');
-        fetchStats(true);
-        fetchAchievements(true);
-      } else {
-        console.log('No refresh flag - using cached data if available');
-        fetchStats(false);
-        fetchAchievements(false);
-      }
+      // Check if we should show achievement toasts (after game completion)
+      const shouldShowToasts = checkAndClearRefreshFlag() || hasRefreshParam;
       
-      // Always fetch rank fresh (no caching)
-      fetchUserRank();
+      // ALWAYS fetch fresh stats, achievements, and rank on page load
+      // This ensures XP/level is always up-to-date, just like rank
+      console.log('Loading main menu - fetching fresh stats, achievements, and rank');
+      fetchStats(true); // Always force refresh
+      fetchAchievements(shouldShowToasts); // Show toasts only if coming from game/OAuth
+      fetchUserRank(); // Always fetch rank fresh (no caching)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]); // fetchStats, fetchAchievements, and fetchUserRank are stable (useCallback with proper deps), safe to omit

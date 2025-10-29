@@ -23,6 +23,13 @@ import {
   calculateRoundTotalXp,
   levelForXp,
 } from '@/lib/game/xp-system';
+import { 
+  applyComboMultiplier, 
+  calculateNextCombo, 
+  getComboMultiplier,
+  shouldAdvanceCombo,
+  shouldBreakCombo 
+} from '@/lib/game/combo-system';
 
 /**
  * Check if a message is a generic opener that should result in ghosting
@@ -161,7 +168,7 @@ export async function POST(request: NextRequest) {
         // Return ghosted response (no AI message!)
         return NextResponse.json<ChatMessageResponse>({
           userMessage: {
-            id: 'user-ghosted',
+            id: `user-ghosted-${Date.now()}`,
             content: trimmedMessage,
             timestamp: userMessageTimestamp,
             role: 'user',
@@ -271,13 +278,13 @@ export async function POST(request: NextRequest) {
       // Return victory response
       return NextResponse.json<ChatMessageResponse>({
         userMessage: {
-          id: userMessageData?.id || 'temp',
+          id: userMessageData?.id || `temp_user_${Date.now()}`,
           content: trimmedMessage,
           timestamp: userMessageTimestamp,
           role: 'user',
         },
         aiResponse: {
-          id: aiMessageData?.id || 'system',
+          id: aiMessageData?.id || `temp_ai_${Date.now()}`,
           content: "Wait... did you just... 🤯 Okay I'm absolutely blown away. You're incredible! Let's meet up! 💕",
           timestamp: aiMessageTimestamp,
           role: 'assistant',
@@ -369,13 +376,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json<ChatMessageResponse>(
         {
           userMessage: {
-            id: userMessageData?.id || 'temp',
+            id: userMessageData?.id || `temp_user_${Date.now()}`,
             content: trimmedMessage,
             timestamp: userMessageTimestamp,
             role: 'user',
           },
           aiResponse: {
-            id: 'system',
+            id: `temp_ai_${Date.now()}`,
             content: 'That was inappropriate. Game over.',
             timestamp: new Date().toISOString(),
             role: 'assistant',
@@ -406,19 +413,56 @@ export async function POST(request: NextRequest) {
       girlDescription: round.girl_description || undefined,
     });
 
-    // STEP 3: Calculate new meter value
-    const newMeter = calculateNewMeter(currentMeter, aiOutput.successDelta);
+    // STEP 2.5: Apply combo multiplier to success delta
+    const currentCombo = round.current_combo || 0;
+    const previousCombo = currentCombo;
+    const originalDelta = aiOutput.successDelta;
+    
+    // Apply combo multiplier BEFORE calculating new meter
+    const multipliedDelta = applyComboMultiplier(originalDelta, currentCombo);
+    const finalDelta = multipliedDelta; // This is capped at +14 in applyComboMultiplier
+    
+    // Calculate new combo level based on original delta (not multiplied)
+    const newCombo = calculateNextCombo(currentCombo, originalDelta);
+    const didAdvance = shouldAdvanceCombo(originalDelta) && newCombo > currentCombo;
+    const didBreak = shouldBreakCombo(originalDelta);
+    const comboMultiplier = getComboMultiplier(currentCombo);
+    
+    console.log(`🔥 Combo: ${previousCombo} → ${newCombo} (multiplier: ${comboMultiplier}x, delta: ${originalDelta} → ${finalDelta})`);
+    
+    // Update combo in database
+    const newHighestCombo = Math.max(round.highest_combo || 0, newCombo);
+    const { error: comboUpdateError } = await supabase
+      .from('game_rounds')
+      .update({
+        current_combo: newCombo,
+        highest_combo: newHighestCombo,
+      })
+      .eq('id', roundId);
+    
+    if (comboUpdateError) {
+      console.error('Failed to update combo:', comboUpdateError);
+    }
+
+    // STEP 3: Calculate new meter value using FINAL delta (with combo multiplier)
+    const newMeter = calculateNewMeter(currentMeter, finalDelta);
     const gameStatus = determineGameStatus(newMeter);
 
-    console.log(`📊 Meter update: ${currentMeter}% → ${newMeter}% (${aiOutput.successDelta > 0 ? '+' : ''}${aiOutput.successDelta})`)
+    console.log(`📊 Meter update: ${currentMeter}% → ${newMeter}% (${finalDelta > 0 ? '+' : ''}${finalDelta})`)
 
     // STEP 3.5: Calculate and award message XP (if delta > 0)
     let messageXp = 0;
     let userCurrentXp = 0;
     let userCurrentLevel = 1;
 
+    // IMPORTANT: Lock the level at round start to prevent exponential XP growth
+    // Use the level the player had when they started the round, not their current level
+    const startingLevel = round.xp_before_round 
+      ? levelForXp(round.xp_before_round) 
+      : 1;
+
     if (aiOutput.successDelta > 0) {
-      // Fetch user's current XP and level
+      // Fetch user's current XP (for updating total)
       const { data: userData, error: userFetchError } = await supabase
         .from('users')
         .select('level, total_xp')
@@ -428,15 +472,14 @@ export async function POST(request: NextRequest) {
       if (userFetchError) {
         console.error('Failed to fetch user XP data:', userFetchError);
       } else if (userData) {
-        userCurrentLevel = userData.level || 1;
         userCurrentXp = userData.total_xp || 0;
 
-        // Calculate message XP
-        messageXp = calculateMessageXp(aiOutput.successDelta, userCurrentLevel);
+        // Calculate message XP using the LOCKED starting level (prevents exponential growth)
+        messageXp = calculateMessageXp(aiOutput.successDelta, startingLevel);
         const newTotalXp = userCurrentXp + messageXp;
         const newLevel = levelForXp(newTotalXp);
 
-        console.log(`✨ Message XP awarded: +${messageXp} XP (L${userCurrentLevel} → L${newLevel}, ${userCurrentXp} → ${newTotalXp} XP)`);
+        console.log(`✨ Message XP awarded: +${messageXp} XP (locked L${startingLevel}, now L${newLevel}, ${userCurrentXp} → ${newTotalXp} XP)`);
 
         // Update user's XP and level
         const { error: xpUpdateError } = await supabase
@@ -479,12 +522,13 @@ export async function POST(request: NextRequest) {
         round_id: roundId,
         role: 'user',
         content: trimmedMessage,
-        success_delta: aiOutput.successDelta,
+        success_delta: finalDelta, // Save the FINAL delta (with combo multiplier)
         meter_after: newMeter,
         category: aiOutput.category,
         reasoning: aiOutput.reasoning,
         is_instant_fail: false,
         xp_gained: messageXp > 0 ? messageXp : null, // Store XP if awarded
+        combo_at_message: previousCombo, // Store combo count when message was sent
       })
       .select()
       .single();
@@ -688,20 +732,20 @@ export async function POST(request: NextRequest) {
     // STEP 6: Build and return response
     const response: ChatMessageResponse = {
       userMessage: {
-        id: userMessageData?.id || 'temp',
+        id: userMessageData?.id || `temp_user_${Date.now()}`,
         content: trimmedMessage,
         timestamp: userMessageTimestamp,
         role: 'user',
       },
       aiResponse: {
-        id: aiMessageDataArray[0]?.id || 'temp',
+        id: aiMessageDataArray[0]?.id || `temp_ai_${Date.now()}`,
         content: aiOutput.response,
         timestamp: aiMessageTimestamp,
         role: 'assistant',
       },
       successMeter: {
         previous: currentMeter,
-        delta: aiOutput.successDelta,
+        delta: finalDelta, // Return the FINAL delta (with combo multiplier)
         current: newMeter,
         category: aiOutput.category,
       },
@@ -712,6 +756,14 @@ export async function POST(request: NextRequest) {
       xpGained: messageXp > 0 ? messageXp : undefined,
       currentXp: messageXp > 0 ? userCurrentXp : undefined,
       currentLevel: messageXp > 0 ? userCurrentLevel : undefined,
+      // Combo info for display and animation
+      comboInfo: {
+        currentCombo: newCombo,
+        previousCombo: previousCombo,
+        multiplier: comboMultiplier,
+        didAdvance,
+        didBreak,
+      },
     };
 
     return NextResponse.json<ChatMessageResponse>(response, { status: 200 });

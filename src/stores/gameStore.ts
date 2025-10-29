@@ -12,6 +12,11 @@ interface GameState {
   lastDelta: number | null;
   showDelta: boolean;
 
+  // Combo system
+  currentCombo: number;
+  highestCombo: number;
+  lastComboChange: 'increase' | 'break' | null;
+
   // Messages
   messages: Message[];
 
@@ -35,6 +40,8 @@ interface GameState {
     initialMeter: number
   ) => void;
   updateSuccessMeter: (delta: number, newValue: number) => void;
+  updateCombo: (newCombo: number, isIncrease: boolean) => void;
+  resetCombo: () => void;
   addMessages: (userMessage: Message, aiMessage: Message) => void;
   addOptimisticMessage: (message: Message) => void;
   removeOptimisticMessage: (messageId: string) => void;
@@ -44,6 +51,7 @@ interface GameState {
   setError: (error: string | null) => void;
   resetGame: () => void;
   hideDelta: () => void;
+  clearComboAnimation: () => void;
 }
 
 const initialState = {
@@ -52,6 +60,9 @@ const initialState = {
   currentMeter: 20,
   lastDelta: null,
   showDelta: false,
+  currentCombo: 0,
+  highestCombo: 0,
+  lastComboChange: null as 'increase' | 'break' | null,
   messages: [],
   gameStatus: 'active' as GameStatus,
   failReason: null,
@@ -114,6 +125,25 @@ export const useGameStore = create<GameState>()(
         });
       },
 
+      updateCombo: (newCombo, isIncrease) => {
+        set((state) => ({
+          currentCombo: newCombo,
+          highestCombo: Math.max(state.highestCombo, newCombo),
+          lastComboChange: isIncrease ? 'increase' : (newCombo === 0 ? 'break' : null),
+        }));
+      },
+
+      resetCombo: () => {
+        set({
+          currentCombo: 0,
+          lastComboChange: 'break',
+        });
+      },
+
+      clearComboAnimation: () => {
+        set({ lastComboChange: null });
+      },
+
       addMessages: (userMessage, aiMessage) => {
         set((state) => ({
           messages: [...state.messages, userMessage, aiMessage],
@@ -173,10 +203,13 @@ export const useGameStore = create<GameState>()(
         girl: state.girl,
         messages: state.messages,
         currentMeter: state.currentMeter,
+        currentCombo: state.currentCombo,
+        highestCombo: state.highestCombo,
         gameStatus: state.gameStatus,
         failReason: state.failReason,
         hasHydrated: state.hasHydrated,
         // isWonThisSession: NOT persisted - defaults to false on reload
+        // lastComboChange: NOT persisted - animation state only
       }),
     }
   )

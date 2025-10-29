@@ -93,6 +93,7 @@ export interface GameRound {
   messageCount: number;
   startedAt: string;
   completedAt: string;
+  isPinned?: boolean; // Indicates if this round is pinned
 }
 
 /**

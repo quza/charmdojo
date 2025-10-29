@@ -11,15 +11,20 @@ export const MAX_LEVEL = 99;
 export const MIN_LEVEL = 1;
 
 // Message XP base values by delta range
+// Adjusted values for target progression:
+// Early game (1-10): 1-2 rounds/level
+// Mid game (10-40): 3-5 rounds/level
+// Late game (40-70): 6-10 rounds/level
+// End game (70-99): 11-20 rounds/level
 export const MSG_BASE_TIERS = {
-  t12: 60,   // Delta +1 or +2
-  t34: 120,  // Delta +3 or +4
-  t56: 220,  // Delta +5 or +6
-  t78: 380,  // Delta +7 or +8
+  t12: 2,    // Delta +1 or +2 (was 60, divided by 30)
+  t34: 4,    // Delta +3 or +4 (was 120, divided by 30)
+  t56: 7,    // Delta +5 or +6 (was 220, divided by ~31)
+  t78: 12,   // Delta +7 or +8 (was 380, divided by ~32)
 } as const;
 
 export const MSG_EXPONENT = 0.15;
-export const WIN_BASE = 1600;
+export const WIN_BASE = 50;  // (was 1600, divided by 32)
 export const WIN_EXPONENT = 0.25;
 export const STREAK_CAP = 2.0;
 

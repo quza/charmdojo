@@ -132,7 +132,7 @@ export default function LeaderboardPage() {
             Global Leaderboard
           </h1>
           <p className="text-lg text-white/70">
-            Top players ranked by simulations won
+            Top players ranked by Total XP
           </p>
           {leaderboardData?.currentUserRank && (
             <p className="mt-2 text-sm text-[#e15f6e]">
@@ -177,6 +177,8 @@ export default function LeaderboardPage() {
                         <tr className="border-b border-[#e15f6e]/20">
                           <th className="pb-4 text-left text-sm font-semibold text-white/80">Rank</th>
                           <th className="pb-4 text-left text-sm font-semibold text-white/80">Player</th>
+                          <th className="pb-4 text-center text-sm font-semibold text-white/80">Level</th>
+                          <th className="pb-4 text-center text-sm font-semibold text-white/80">Total XP</th>
                           <th className="pb-4 text-center text-sm font-semibold text-white/80">Simulations Won</th>
                           <th className="pb-4 text-center text-sm font-semibold text-white/80">Success Ratio</th>
                           <th className="pb-4 text-center text-sm font-semibold text-white/80">Current Winstreak</th>
@@ -213,6 +215,12 @@ export default function LeaderboardPage() {
                                   )}
                                 </div>
                               </div>
+                            </td>
+                            <td className="py-4 text-center">
+                              <span className="font-semibold text-white">{entry.level}</span>
+                            </td>
+                            <td className="py-4 text-center">
+                              <span className="text-white">{entry.totalXp.toLocaleString()}</span>
                             </td>
                             <td className="py-4 text-center">
                               <div className="flex items-center justify-center gap-1">
@@ -273,6 +281,14 @@ export default function LeaderboardPage() {
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-lg bg-[#04060c] p-3">
+                        <p className="mb-1 text-xs text-white/60">Level</p>
+                        <p className="text-lg font-semibold text-white">{entry.level}</p>
+                      </div>
+                      <div className="rounded-lg bg-[#04060c] p-3">
+                        <p className="mb-1 text-xs text-white/60">Total XP</p>
+                        <p className="text-lg font-semibold text-white">{entry.totalXp.toLocaleString()}</p>
+                      </div>
                       <div className="rounded-lg bg-[#04060c] p-3">
                         <p className="mb-1 text-xs text-white/60">Simulations Won</p>
                         <div className="flex items-center gap-1">

@@ -16,12 +16,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. Fetch top players ordered by total wins (only those who opted in)
+    // 2. Fetch top players ordered by total XP (only those who opted in)
     const { data: users, error: usersError } = await supabase
       .from('users')
-      .select('id, name, avatar_url, total_wins, total_rounds, current_streak, total_achievements')
+      .select('id, name, avatar_url, level, total_xp, total_wins, total_rounds, current_streak, total_achievements')
       .eq('show_on_leaderboard', true)
-      .order('total_wins', { ascending: false })
+      .order('total_xp', { ascending: false })
       .order('current_streak', { ascending: false }) // Tiebreaker: higher streak
       .order('created_at', { ascending: true }) // Tiebreaker: earlier user
       .limit(100);
@@ -43,6 +43,8 @@ export async function GET() {
         userId: userData.id,
         name: userData.name,
         avatarUrl: userData.avatar_url,
+        level: userData.level || 1,
+        totalXp: userData.total_xp || 0,
         totalWins: userData.total_wins || 0,
         successRatio,
         currentStreak: userData.current_streak || 0,

@@ -1,18 +1,30 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import type { GameRound } from '@/types/game';
-import { Trophy, X, MessageCircle, Calendar } from 'lucide-react';
+import { Trophy, X, MessageCircle, Calendar, Pin, PinOff } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface HistoryGirlCardProps {
   round: GameRound;
   onClick: (round: GameRound) => void;
+  onPinChange?: (roundId: string, isPinned: boolean) => void;
+  showPinButton?: boolean;
 }
 
-export function HistoryGirlCard({ round, onClick }: HistoryGirlCardProps) {
+export function HistoryGirlCard({ 
+  round, 
+  onClick, 
+  onPinChange,
+  showPinButton = false 
+}: HistoryGirlCardProps) {
   const isWin = round.result === 'win';
+  const [isPinning, setIsPinning] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   
   // Format date
   const completedDate = new Date(round.completedAt);
@@ -22,9 +34,41 @@ export function HistoryGirlCard({ round, onClick }: HistoryGirlCardProps) {
     year: 'numeric'
   });
 
+  const handlePinClick = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    setIsPinning(true);
+
+    try {
+      const method = round.isPinned ? 'DELETE' : 'POST';
+      const response = await fetch(`/api/game/rounds/${round.id}/pin`, {
+        method,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update pin status');
+      }
+
+      const data = await response.json();
+      
+      // Call parent callback to update state
+      if (onPinChange) {
+        onPinChange(round.id, data.pinned);
+      }
+
+      toast.success(data.pinned ? 'Girl pinned!' : 'Girl unpinned');
+    } catch (error) {
+      console.error('Error toggling pin:', error);
+      toast.error('Failed to update pin status');
+    } finally {
+      setIsPinning(false);
+    }
+  };
+
   return (
     <Card
       onClick={() => onClick(round)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       role="button"
       tabIndex={0}
       aria-label={`View conversation with ${round.girlName}`}
@@ -85,6 +129,49 @@ export function HistoryGirlCard({ round, onClick }: HistoryGirlCardProps) {
         {isWin && (
           <div className="absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-green-400 backdrop-blur-sm">
             {round.finalMeter}% ❤️
+          </div>
+        )}
+
+        {/* Pin Button - Appears on hover for wins */}
+        {showPinButton && isWin && (
+          <div
+            className={cn(
+              'absolute bottom-3 right-3 transition-opacity duration-200',
+              isHovered || round.isPinned ? 'opacity-100' : 'opacity-0'
+            )}
+          >
+            <Button
+              onClick={handlePinClick}
+              disabled={isPinning}
+              size="sm"
+              variant="secondary"
+              className={cn(
+                'rounded-full shadow-lg backdrop-blur-sm transition-all',
+                round.isPinned
+                  ? 'bg-[#e15f6e] hover:bg-[#e15f6e]/80 text-white'
+                  : 'bg-black/60 hover:bg-black/80 text-white'
+              )}
+            >
+              {round.isPinned ? (
+                <>
+                  <PinOff className="size-3.5 mr-1" />
+                  Unpin
+                </>
+              ) : (
+                <>
+                  <Pin className="size-3.5 mr-1" />
+                  Pin
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Pinned Indicator Badge - Bottom left corner */}
+        {round.isPinned && (
+          <div className="absolute left-3 bottom-3 flex items-center gap-1 rounded-full bg-[#e15f6e] px-2.5 py-1 text-xs font-semibold text-white shadow-lg">
+            <Pin className="size-3" />
+            Pinned
           </div>
         )}
       </div>

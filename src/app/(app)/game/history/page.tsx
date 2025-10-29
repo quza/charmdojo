@@ -170,6 +170,20 @@ export default function GameHistoryPage() {
     setOverlayOpen(true);
   };
 
+  // Handle pin/unpin
+  const handlePinChange = useCallback((roundId: string, isPinned: boolean) => {
+    setWinRounds(prev => 
+      prev.map(round => 
+        round.id === roundId ? { ...round, isPinned } : round
+      ).sort((a, b) => {
+        // Sort pinned first
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return 0;
+      })
+    );
+  }, []);
+
   // Loading skeleton
   const LoadingSkeleton = () => (
     <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -263,6 +277,8 @@ export default function GameHistoryPage() {
                       key={round.id}
                       round={round}
                       onClick={handleCardClick}
+                      onPinChange={handlePinChange}
+                      showPinButton={true}
                     />
                   ))}
                 </div>

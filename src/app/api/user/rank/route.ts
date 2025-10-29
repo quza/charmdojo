@@ -18,7 +18,7 @@ export async function GET() {
     // 2. Check if user opted in to leaderboard
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('show_on_leaderboard, total_wins, current_streak, created_at')
+      .select('show_on_leaderboard, total_xp, current_streak, created_at')
       .eq('id', user.id)
       .single();
 
@@ -34,17 +34,17 @@ export async function GET() {
 
     // 3. Calculate rank by counting users with better standings
     // A user has better standing if:
-    // - They have more total_wins, OR
-    // - They have same total_wins but higher current_streak, OR
-    // - They have same total_wins and current_streak but earlier created_at
+    // - They have more total_xp, OR
+    // - They have same total_xp but higher current_streak, OR
+    // - They have same total_xp and current_streak but earlier created_at
     const { count, error: countError } = await supabase
       .from('users')
       .select('*', { count: 'exact', head: true })
       .eq('show_on_leaderboard', true)
       .or(
-        `total_wins.gt.${userData.total_wins},` +
-        `and(total_wins.eq.${userData.total_wins},current_streak.gt.${userData.current_streak}),` +
-        `and(total_wins.eq.${userData.total_wins},current_streak.eq.${userData.current_streak},created_at.lt.${userData.created_at})`
+        `total_xp.gt.${userData.total_xp},` +
+        `and(total_xp.eq.${userData.total_xp},current_streak.gt.${userData.current_streak}),` +
+        `and(total_xp.eq.${userData.total_xp},current_streak.eq.${userData.current_streak},created_at.lt.${userData.created_at})`
       );
 
     if (countError) {

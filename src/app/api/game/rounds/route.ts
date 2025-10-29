@@ -35,10 +35,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Build query
+    // Build query - join with pinned_rounds to get pin status
     let query = supabase
       .from('game_rounds')
-      .select('*')
+      .select(`
+        *,
+        pinned_rounds!left(pinned_at)
+      `)
       .eq('user_id', user.id)
       .not('result', 'is', null) // Only completed rounds
       .neq('is_abandoned', true) // Exclude abandoned rounds
@@ -86,7 +89,17 @@ export async function GET(request: NextRequest) {
       messageCount: round.message_count,
       startedAt: round.started_at,
       completedAt: round.completed_at ?? round.started_at,
+      isPinned: Array.isArray(round.pinned_rounds) && round.pinned_rounds.length > 0,
     }));
+
+    // Sort pinned rounds first for wins
+    if (result === 'win') {
+      transformedRounds.sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return 0; // Keep original order (by started_at)
+      });
+    }
 
     const response: RoundsResponse = {
       rounds: transformedRounds,

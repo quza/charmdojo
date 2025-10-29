@@ -78,6 +78,14 @@ export interface ChatMessageResponse {
   xpGained?: number;
   currentXp?: number;
   currentLevel?: number;
+  // Combo information
+  comboInfo?: {
+    currentCombo: number;
+    previousCombo: number;
+    multiplier: number;
+    didAdvance: boolean;
+    didBreak: boolean;
+  };
 }
 
 /**
